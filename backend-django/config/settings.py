@@ -17,8 +17,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    # Points cleanly to your authentication folder
-    'apps.authentication.apps.AuthenticationConfig',  
+    # Points cleanly to your authentication folder  
+    'apps.authentication',
+    'apps.classroom',
+    'apps.analysis_engine',
 ]
 
 MIDDLEWARE = [
