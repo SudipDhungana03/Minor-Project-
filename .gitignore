@@ -1,0 +1,13 @@
+# Ignore the Python Virtual Environment
+env/
+venv/
+ENV/
+
+# Ignore local database files if any sneak in
+*.sqlite3
+
+# Ignore Python cache compilation folders
+__pycache__/
+*.pyc
+
+backend-django/env/

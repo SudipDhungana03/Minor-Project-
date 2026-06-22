@@ -21,9 +21,15 @@ INSTALLED_APPS = [
     'apps.authentication',
     'apps.classroom',
     'apps.analysis_engine',
+
+    'corsheaders',
+    'rest_framework',
+    'rest_framework_simplejwt',
+
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -82,3 +88,17 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Tells Django where to look for your Custom User Model
 AUTH_USER_MODEL = 'authentication.User'
+
+# Configure Django REST Framework to use Simple JWT for security guards
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
+
+# Whitelist your React frontend port so the browser doesn't block API communication
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+]
