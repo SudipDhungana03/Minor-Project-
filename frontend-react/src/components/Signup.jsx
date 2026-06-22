@@ -13,10 +13,12 @@ const Signup = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await API.post('/register/', formData);
+            await API.post('/api/register/', formData);
             setMessage("Registration successful! You can now login.");
         } catch (error) {
-            setMessage(error.response?.data?.message || 'Registration failed.');
+            console.error('Signup error:', error);
+            const serverMsg = error.response?.data?.message || error.response?.data || error.message;
+            setMessage(serverMsg || 'Registration failed.');
         }
     };
 

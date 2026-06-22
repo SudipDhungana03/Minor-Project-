@@ -27,8 +27,9 @@ const Login = () => {
             }, 1000);
             
         } catch (error) {
-            console.error("Login Error:", error.response?.data);
-            setMessage('Invalid username or password.');
+            console.error('Login error:', error);
+            const serverMsg = error.response?.data?.detail || error.response?.data || error.message;
+            setMessage(serverMsg || 'Invalid username or password.');
         }
     };
 

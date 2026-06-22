@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+// Allow overriding the backend URL via Vite env var `VITE_API_URL`.
+// Falls back to the localhost Django server used in development.
 const API = axios.create({
-    baseURL: 'http://127.0.0.1:8000/',
+    baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/',
     headers: {
         'Content-Type': 'application/json',
     },
