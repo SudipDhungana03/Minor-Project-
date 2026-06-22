@@ -9,7 +9,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password']  # Clean, minimal onboarding fields
+        fields = ['username', 'email', 'password']
 
     def create(self, validated_data):
         # Automatically hashes and encrypts the password into PostgreSQL
@@ -19,3 +19,16 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data['password']
         )
         return user
+
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        # These fields will be updated during the CompleteProfile step
+        fields = ['role', 'name', 'organization']
+        
+        # Optional: set these to not required so they can be updated one by one
+        extra_kwargs = {
+            'role': {'required': False},
+            'name': {'required': False},
+            'organization': {'required': False}
+        }
