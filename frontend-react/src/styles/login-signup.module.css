@@ -1,42 +1,77 @@
-/* src/styles/login-signup.module.css */
+/* Color Palette: Modern SaaS Professional */
+:root {
+    --primary: #4f46e5;      /* Indigo-600 */
+    --primary-hover: #4338ca; 
+    --bg-color: #f8fafc;     /* Slate-50 */
+    --card-bg: #ffffff;
+    --text-main: #1e293b;    /* Slate-800 */
+    --text-muted: #64748b;   /* Slate-500 */
+    --border: #e2e8f0;       /* Slate-200 */
+}
+
 .authContainer {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-color: #f4f7f6;
+    background-color: var(--bg-color);
+    padding: 20px;
 }
 
 .authCard {
-    background: white;
+    background: var(--card-bg);
     padding: 2.5rem;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border);
     width: 100%;
     max-width: 400px;
+    transition: transform 0.2s ease;
 }
 
 .inputField {
     width: 100%;
-    padding: 12px;
-    margin: 10px 0;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    box-sizing: border-box; /* Ensures padding doesn't break width */
+    padding: 14px 16px;
+    margin: 12px 0;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    box-sizing: border-box;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    transition: all 0.2s ease;
+}
+
+.inputField:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
 }
 
 .submitBtn {
     width: 100%;
-    padding: 12px;
-    background-color: #4a90e2;
+    padding: 14px;
+    background-color: var(--primary);
     color: white;
     border: none;
-    border-radius: 6px;
-    font-weight: bold;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1rem;
     cursor: pointer;
     margin-top: 15px;
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 .submitBtn:hover {
-    background-color: #357abd;
+    background-color: var(--primary-hover);
+}
+
+.submitBtn:active {
+    transform: scale(0.98);
+}
+
+.message {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
 }

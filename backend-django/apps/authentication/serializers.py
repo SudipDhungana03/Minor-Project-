@@ -1,9 +1,11 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 # Grabs your custom User model dynamically
 User = get_user_model()
 
+# --- Registration Serializer ---
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
@@ -20,6 +22,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
+# --- Profile Update Serializer ---
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -32,3 +35,18 @@ class ProfileSerializer(serializers.ModelSerializer):
             'name': {'required': False},
             'organization': {'required': False}
         }
+
+# --- Custom Token Serializer for Role-Based Login ---
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Add 'role' to the JWT token claims
+        token['role'] = user.role
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        # Include 'role' in the response body so the frontend can read it
+        data['role'] = self.user.role
+        return data

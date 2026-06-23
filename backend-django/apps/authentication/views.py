@@ -6,10 +6,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
-from .serializers import RegisterSerializer
+from .serializers import RegisterSerializer, ProfileSerializer
 from rest_framework.generics import UpdateAPIView
-from rest_framework.permissions import IsAuthenticated
-from .serializers import ProfileSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
 
@@ -33,27 +32,48 @@ class SendVerificationView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
         email = request.data.get('email')
+        print(f"DEBUG SendVerificationView received: {request.data}")
         try:
-            user = User.objects.get(email=email)
-            code = str(random.randint(100000, 999999))
-            user.verification_code = code
-            user.save()
-            send_mail('Verification Code', f'Your code is {code}', 'noreply@project.com', [email])
-            return Response({"message": "Code sent"})
+            # case-insensitive lookup to avoid email case mismatch
+            user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        code = str(random.randint(100000, 999999))
+        user.verification_code = code
+        user.save()
+        send_mail('Verification Code', f'Your code is {code}', 'noreply@project.com', [email])
+        return Response({"message": "Code sent"})
 
 # --- NEW: Verify Code ---
 class VerifyCodeView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
+        # Debug the incoming payload
+        print(f"DEBUG VerifyCodeView received: {request.data}")
         email = request.data.get('email')
         code = request.data.get('code')
-        user = User.objects.get(email=email)
-        if user.verification_code == code:
+
+        if not email or not code:
+            return Response({"error": "email and code are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if str(user.verification_code) == str(code):
             user.is_verified = True
             user.save()
-            return Response({"message": "Verification successful!"})
+
+            # Issue JWT tokens so frontend can authenticate immediately
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "message": "Verification successful!",
+                "access": str(refresh.access_token),
+                "refresh": str(refresh)
+            })
+
         return Response({"error": "Invalid code"}, status=status.HTTP_400_BAD_REQUEST)
 
 # --- Dashboard View ---
@@ -66,6 +86,7 @@ def dashboard_view(request):
         "role": request.user.role
     }, status=status.HTTP_200_OK)
 
+# --- NEW: Update Profile View ---
 class UpdateProfileView(UpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ProfileSerializer

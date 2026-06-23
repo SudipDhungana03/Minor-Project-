@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -102,3 +103,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:5173",
 ]
+
+SIMPLE_JWT = {
+    'TOKEN_OBTAIN_SERIALIZER': 'apps.authentication.serializers.MyTokenObtainPairSerializer',
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60), # Recommended: set your token lifespan
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+}
+
+# Use console backend to see verification codes directly in your terminal
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
