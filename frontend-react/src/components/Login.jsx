@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import API from '../services/api';
 import { useNavigate } from 'react-router-dom';
-import styles from '../styles/login-signup.module.css'; // Import the shared styles
+import API from '../services/api';
+import styles from '../styles/login-signup.module.css';
+import AuthHeader from './AuthHeader';
 
 const Login = () => {
     const [formData, setFormData] = useState({ username: '', password: '' });
@@ -15,46 +16,54 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await API.post('/api/login/', formData);
+            const { data } = await API.post('/api/login/', formData);
             
-            localStorage.setItem('access_token', response.data.access);
-            localStorage.setItem('refresh_token', response.data.refresh);
+            // Store tokens and role
+            localStorage.setItem('access_token', data.access);
+            localStorage.setItem('refresh_token', data.refresh);
+            localStorage.setItem('role', data.role);
             
             setMessage('Login successful! Redirecting...');
             
+            // Role-based redirection
             setTimeout(() => {
-                navigate('/'); 
+                if (data.role === 'student') {
+                    navigate('/student-dashboard');
+                } else if (data.role === 'teacher') {
+                    navigate('/teacher-dashboard');
+                } else {
+                    navigate('/');
+                }
             }, 1000);
             
         } catch (error) {
             console.error('Login error:', error);
-            const serverMsg = error.response?.data?.detail || error.response?.data || error.message;
-            setMessage(serverMsg || 'Invalid username or password.');
+            const serverMsg = error.response?.data?.detail || 'Invalid username or password.';
+            setMessage(serverMsg);
         }
     };
 
     return (
         <div className={styles.authContainer}>
             <form className={styles.authCard} onSubmit={handleSubmit}>
-                <h2>Login</h2>
+                <AuthHeader />
+                <h3 style={{ textAlign: 'center', color: '#444', marginBottom: '20px' }}>
+                    Welcome back
+                </h3>
+                
                 <input 
                     className={styles.inputField} 
-                    type="text" 
-                    name="username" 
-                    placeholder="Username" 
-                    onChange={handleChange} 
-                    required 
+                    type="text" name="username" placeholder="Username" 
+                    onChange={handleChange} required 
                 />
                 <input 
                     className={styles.inputField} 
-                    type="password" 
-                    name="password" 
-                    placeholder="Password" 
-                    onChange={handleChange} 
-                    required 
+                    type="password" name="password" placeholder="Password" 
+                    onChange={handleChange} required 
                 />
+                
                 <button className={styles.submitBtn} type="submit">Login</button>
-                {message && <p>{message}</p>}
+                {message && <p className={styles.message}>{message}</p>}
             </form>
         </div>
     );

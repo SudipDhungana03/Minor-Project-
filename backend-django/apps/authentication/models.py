@@ -14,6 +14,11 @@ class User(AbstractUser):
         choices=ROLE_CHOICES, 
         default='student'
     )
+    # New fields for Step 1: Verification
+    verification_code = models.CharField(max_length=6, null=True, blank=True)
+    is_verified = models.BooleanField(default=False)
+    name = models.CharField(max_length=255, blank=True)
+    organization = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
         return f"{self.username} ({self.role})"
