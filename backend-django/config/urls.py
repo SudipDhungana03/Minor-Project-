@@ -8,4 +8,5 @@ urlpatterns = [
 
     # Connect your clean authentication paths to the system API route
     path('api/', include('apps.authentication.urls')),
+    path('api/classroom/', include('apps.classroom.urls')),
 ]
