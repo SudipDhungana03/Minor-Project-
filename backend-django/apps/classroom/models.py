@@ -22,3 +22,13 @@ class Assignment(models.Model):
 
     def __str__(self):
         return self.title
+
+class Submission(models.Model):
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='submissions')
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    content = models.TextField(blank=True, null=True) # For the note/comment
+    file = models.FileField(upload_to='submissions/', blank=True, null=True) # For file upload
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Submission by {self.student.username} for {self.assignment.title}"
