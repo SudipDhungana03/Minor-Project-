@@ -4,12 +4,22 @@ import { Link } from 'react-router-dom';
 
 const TeacherDashboard = () => {
     const [classrooms, setClassrooms] = useState([]);
+    const [assignments, setAssignments] = useState([]);
     const [pendingCount, setPendingCount] = useState(0);
 
     useEffect(() => {
         const fetchClassrooms = async () => {
             const res = await API.get('/api/classroom/classrooms/');
             setClassrooms(res.data);
+        };
+
+        const fetchAssignments = async () => {
+            try {
+                const res = await API.get('/api/classroom/assignments/');
+                setAssignments(res.data);
+            } catch (err) {
+                console.error('Error loading assignments:', err);
+            }
         };
 
         const fetchPending = async () => {
@@ -22,6 +32,7 @@ const TeacherDashboard = () => {
         };
 
         fetchClassrooms();
+        fetchAssignments();
         fetchPending();
     }, []);
 
@@ -50,7 +61,7 @@ const TeacherDashboard = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px', marginBottom: '40px' }}>
                 {classrooms.map(c => (
                     <div key={c.id} style={{ 
                         border: '1px solid #e1e4e8', borderRadius: '12px', padding: '24px', 
@@ -62,11 +73,36 @@ const TeacherDashboard = () => {
                             color: '#007acc', fontWeight: '600', textDecoration: 'none',
                             border: '1px solid #007acc', padding: '8px 16px', borderRadius: '6px'
                         }}>
-                            Manage Assignments
+                            View Assignments & Submissions
                         </Link>
                     </div>
                 ))}
             </div>
+
+            <section style={{ border: '1px solid #e5e7eb', borderRadius: '24px', backgroundColor: '#ffffff', padding: '30px', boxShadow: '0 15px 30px rgba(15, 23, 42, 0.05)' }}>
+                <h2 style={{ margin: '0 0 16px', color: '#111827' }}>Published Assignments</h2>
+                {assignments.length === 0 ? (
+                    <div style={{ color: '#6b7280', padding: '24px', borderRadius: '18px', backgroundColor: '#f8fafc' }}>
+                        No published assignments yet. Publish assignments from your classrooms to see them here.
+                    </div>
+                ) : (
+                    <div style={{ display: 'grid', gap: '20px' }}>
+                        {assignments.map((assignment) => (
+                            <div key={assignment.id} style={{ border: '1px solid #e2e8f0', borderRadius: '20px', padding: '22px', backgroundColor: '#f9fafb' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                                    <div>
+                                        <h3 style={{ margin: '0 0 8px', color: '#111827', fontSize: '1.1rem' }}>{assignment.title}</h3>
+                                        <p style={{ margin: 0, color: '#475569' }}>{assignment.classroom_name} · {assignment.classroom_subject}</p>
+                                    </div>
+                                    <Link to={`/assignment/${assignment.id}`} style={{ color: '#1d4ed8', fontWeight: '600', textDecoration: 'none' }}>
+                                        View Assignment and Submissions
+                                    </Link>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </section>
         </div>
     );
 };
