@@ -61,25 +61,35 @@ const TeacherDashboard = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px', marginBottom: '40px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '28px', marginBottom: '40px' }}>
                 {classrooms.map(c => (
                     <div key={c.id} style={{ 
-                        border: '1px solid #e1e4e8', borderRadius: '12px', padding: '24px', 
-                        backgroundColor: '#fff', boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
+                        border: '1px solid #d1d5db', borderRadius: '24px', padding: '28px', 
+                        backgroundColor: '#ffffff', boxShadow: '0 16px 40px rgba(15, 23, 42, 0.08)',
+                        minHeight: '220px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
                     }}>
-                        <h3 style={{ margin: '0 0 10px 0', color: '#2c3e50' }}>{c.name}</h3>
-                        <p style={{ margin: '0 0 20px 0', color: '#7f8c8d' }}>Subject: {c.subject}</p>
+                        <div>
+                            <h3 style={{ margin: '0 0 12px 0', color: '#111827', fontSize: '1.3rem' }}>{c.name}</h3>
+                            <p style={{ margin: 0, color: '#475569', fontSize: '0.95rem' }}>Subject: {c.subject}</p>
+                        </div>
                         <Link to={`/classroom/${c.id}`} style={{ 
-                            color: '#007acc', fontWeight: '600', textDecoration: 'none',
-                            border: '1px solid #007acc', padding: '8px 16px', borderRadius: '6px'
+                            alignSelf: 'flex-start',
+                            color: '#1d4ed8',
+                            fontWeight: '700',
+                            textDecoration: 'none',
+                            border: '1px solid #1d4ed8',
+                            padding: '12px 22px',
+                            borderRadius: '9999px',
+                            transition: 'background-color 0.2s ease',
+                            backgroundColor: '#eff6ff'
                         }}>
-                            View Assignments & Submissions
+                            Add Assignment
                         </Link>
                     </div>
                 ))}
             </div>
 
-            <section style={{ border: '1px solid #e5e7eb', borderRadius: '24px', backgroundColor: '#ffffff', padding: '30px', boxShadow: '0 15px 30px rgba(15, 23, 42, 0.05)' }}>
+            <section style={{ border: '1px solid #e5e7eb', borderRadius: '24px', backgroundColor: '#f8fafc', padding: '34px', boxShadow: '0 20px 45px rgba(15, 23, 42, 0.06)' }}>
                 <h2 style={{ margin: '0 0 16px', color: '#111827' }}>Published Assignments</h2>
                 {assignments.length === 0 ? (
                     <div style={{ color: '#6b7280', padding: '24px', borderRadius: '18px', backgroundColor: '#f8fafc' }}>
