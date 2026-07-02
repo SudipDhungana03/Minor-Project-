@@ -38,23 +38,24 @@ const TeacherDashboard = () => {
 
     return (
         <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'Segoe UI, sans-serif' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-                <div>
-                    <h1 style={{ color: '#333' }}>Teacher Dashboard</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px', gap: '24px' }}>
+                <div style={{ maxWidth: '720px' }}>
+                    <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.18em', fontSize: '0.9rem', color: '#6b7280' }}>Teacher Dashboard</p>
+                    <h1 style={{ color: '#111827', fontSize: '3rem', lineHeight: '1.05', margin: '14px 0 10px' }}>Manage your classrooms and review submissions with confidence.</h1>
                     {pendingCount > 0 && (
-                        <p style={{ margin: '8px 0 0', color: '#b45309' }}>
+                        <p style={{ margin: '12px 0 0', color: '#b45309', fontSize: '1rem' }}>
                             You have <strong>{pendingCount}</strong> pending join request{pendingCount === 1 ? '' : 's'}.
                         </p>
                     )}
                 </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <Link to="/manage-classes" style={{ padding: '12px 24px', background: '#fbbf24', color: '#1f2937', borderRadius: '6px', textDecoration: 'none', fontWeight: '600', boxShadow: '0 2px 4px rgba(251, 191, 36, 0.2)' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Link to="/manage-classes" style={{ padding: '12px 28px', background: '#fbbf24', color: '#1f2937', borderRadius: '8px', textDecoration: 'none', fontWeight: '700', boxShadow: '0 4px 12px rgba(251, 191, 36, 0.22)' }}>
                         Manage Requests{pendingCount > 0 ? ` (${pendingCount})` : ''}
                     </Link>
                     <Link to="/create-classroom" style={{ 
-                        padding: '12px 24px', background: '#28a745', color: '#fff', 
-                        borderRadius: '6px', textDecoration: 'none', fontWeight: '600',
-                        boxShadow: '0 2px 4px rgba(40, 167, 69, 0.2)'
+                        padding: '12px 28px', background: '#28a745', color: '#fff', 
+                        borderRadius: '8px', textDecoration: 'none', fontWeight: '700',
+                        boxShadow: '0 4px 12px rgba(40, 167, 69, 0.22)'
                     }}>
                         + Create Classroom
                     </Link>
