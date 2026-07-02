@@ -9,7 +9,7 @@ const SubmissionList = ({ assignmentId }) => {
     useEffect(() => {
         const fetchSubmissions = async () => {
             try {
-                const res = await API.get(`/api/classroom/submissions/for_assignment/?assignment_id=${assignmentId}`);
+                const res = await API.get(`/api/classroom/assignments/for_assignment/?assignment_id=${assignmentId}`);
                 const sorted = res.data.slice().sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
                 setSubmissions(sorted);
             } catch (err) {
