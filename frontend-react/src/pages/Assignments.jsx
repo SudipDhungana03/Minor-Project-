@@ -1,0 +1,70 @@
+import React, { useState, useEffect } from 'react';
+import API from '../services/api';
+import { Link } from 'react-router-dom';
+
+const Assignments = () => {
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      try {
+        const res = await API.get('/api/classroom/assignments/');
+        setAssignments(res.data);
+      } catch (err) {
+        console.error('Error loading assignments:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAssignments();
+  }, []);
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="mb-8 rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Assignments</h1>
+        <p className="mt-3 text-sm text-slate-500">Browse assignments for your classrooms in one place.</p>
+      </div>
+
+      {loading ? (
+        <div className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm text-center text-slate-500">Loading assignments...</div>
+      ) : (
+        <div className="grid gap-6">
+          {assignments.length === 0 ? (
+            <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-slate-500">
+              No assignments found yet. Create or join a classroom to publish assignments.
+            </div>
+          ) : (
+            assignments.map((assignment) => (
+              <section key={assignment.id} className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-900">{assignment.title}</h2>
+                    <p className="text-sm text-slate-500">{assignment.classroom_name} · {assignment.classroom_subject}</p>
+                  </div>
+                  <Link
+                    to={`/classroom/${assignment.classroom}`}
+                    className="rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+                  >
+                    View Classroom
+                  </Link>
+                </div>
+
+                <p className="text-slate-600 whitespace-pre-line" style={{ textAlign: 'justify' }}>
+                  {assignment.description}
+                </p>
+                <div className="mt-4 text-sm text-slate-500">
+                  Due: {assignment.due_date ? new Date(assignment.due_date).toLocaleString() : 'Not set'}
+                </div>
+              </section>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Assignments;

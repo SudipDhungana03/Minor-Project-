@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import API from '../services/api';
-import SubmissionForm from './SubmissionForm';
+import SubmissionForm from './SubmissionForm.jsx';
 
 const AssignmentDetail = () => {
     const { id } = useParams();
