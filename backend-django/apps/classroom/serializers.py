@@ -16,10 +16,12 @@ class AssignmentSerializer(serializers.ModelSerializer):
         fields = ['id', 'classroom', 'classroom_name', 'classroom_subject', 'title', 'description', 'due_date', 'file']
 
 class SubmissionSerializer(serializers.ModelSerializer):
+    student_username = serializers.CharField(source='student.username', read_only=True)
+
     class Meta:
         model = Submission
-        fields = ['id', 'assignment', 'student', 'content', 'file', 'submitted_at']
-        read_only_fields = ['student', 'submitted_at']
+        fields = ['id', 'assignment', 'student', 'student_username', 'content', 'file', 'submitted_at']
+        read_only_fields = ['student', 'student_username', 'submitted_at']
 
 class JoinRequestSerializer(serializers.ModelSerializer):
     student_username = serializers.CharField(source='student.username', read_only=True)
