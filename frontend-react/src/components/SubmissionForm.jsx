@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import API from '../services/api';
 
 const SubmissionForm = ({ assignmentId }) => {
     const [content, setContent] = useState('');
     const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+    const fileInputRef = useRef(null);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
 
-        // FormData is required for file uploads
         const formData = new FormData();
         formData.append('assignment', assignmentId);
         formData.append('content', content);
@@ -23,8 +24,12 @@ const SubmissionForm = ({ assignmentId }) => {
             alert('Assignment submitted successfully!');
             setContent('');
             setFile(null);
+            setSubmitted(true);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         } catch (err) {
-            console.error("Submission error:", err);
+            console.error('Submission error:', err);
             alert('Failed to submit. Please try again.');
         } finally {
             setLoading(false);
@@ -44,14 +49,32 @@ const SubmissionForm = ({ assignmentId }) => {
             </div>
             <div style={{ marginBottom: '18px' }}>
                 <input 
+                    ref={fileInputRef}
                     type="file" 
-                    onChange={(e) => setFile(e.target.files[0])} 
+                    onChange={(e) => {
+                        setFile(e.target.files[0]);
+                        if (submitted) setSubmitted(false);
+                    }} 
                     required 
                     style={{ borderRadius: '12px', border: '1px solid #d1d5db', padding: '10px', width: '100%' }}
                 />
             </div>
-            <button type="submit" disabled={loading} style={{ marginTop: '10px', width: '100%', borderRadius: '14px', backgroundColor: '#16a34a', color: '#ffffff', fontWeight: 700, padding: '14px 18px', border: 'none', cursor: 'pointer' }}>
-                {loading ? 'Submitting...' : 'Turn In'}
+            <button
+                type="submit"
+                disabled={loading}
+                style={{
+                    marginTop: '10px',
+                    width: '100%',
+                    borderRadius: '14px',
+                    backgroundColor: submitted ? '#16a34a' : '#dc2626',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    padding: '14px 18px',
+                    border: 'none',
+                    cursor: 'pointer',
+                }}
+            >
+                {loading ? 'Submitting...' : (submitted ? 'Submitted' : 'Turn In')}
             </button>
         </form>
     );

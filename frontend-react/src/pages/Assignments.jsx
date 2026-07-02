@@ -21,6 +21,8 @@ const Assignments = () => {
     fetchAssignments();
   }, []);
 
+  const role = localStorage.getItem('role');
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-8 rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
@@ -48,7 +50,7 @@ const Assignments = () => {
                     to={`/assignment/${assignment.id}`}
                     className="rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
                   >
-                    View Assignment
+                    {role === 'teacher' ? 'View Assignment and Submissions' : 'View Assignment'}
                   </Link>
                 </div>
 

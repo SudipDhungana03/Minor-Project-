@@ -124,7 +124,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def for_assignment(self, request):
         assignment_id = request.query_params.get('assignment_id')
-        submissions = Submission.objects.filter(assignment_id=assignment_id)
+        submissions = Submission.objects.filter(assignment_id=assignment_id).order_by('-submitted_at')
         serializer = SubmissionSerializer(submissions, many=True)
         return Response(serializer.data)
 
