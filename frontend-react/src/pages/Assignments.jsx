@@ -45,18 +45,23 @@ const Assignments = () => {
                     <p className="text-sm text-slate-500">{assignment.classroom_name} · {assignment.classroom_subject}</p>
                   </div>
                   <Link
-                    to={`/classroom/${assignment.classroom}`}
+                    to={`/assignment/${assignment.id}`}
                     className="rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
                   >
-                    View Classroom
+                    View Assignment
                   </Link>
                 </div>
 
-                <p className="text-slate-600 whitespace-pre-line" style={{ textAlign: 'justify' }}>
+                <p className="text-slate-600 whitespace-pre-line" style={{ textAlign: 'left' }}>
                   {assignment.description}
                 </p>
-                <div className="mt-4 text-sm text-slate-500">
-                  Due: {assignment.due_date ? new Date(assignment.due_date).toLocaleString() : 'Not set'}
+                <div className="mt-4 grid gap-2 text-sm text-slate-500">
+                  <div>Due: {assignment.due_date ? new Date(assignment.due_date).toLocaleString() : 'Not set'}</div>
+                  {assignment.file && (
+                    <a href={`${API.defaults.baseURL}${assignment.file}`} target="_blank" rel="noreferrer" className="font-semibold text-indigo-700 hover:text-indigo-900">
+                      Download assignment attachment
+                    </a>
+                  )}
                 </div>
               </section>
             ))

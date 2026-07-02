@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import API from '../services/api';
 
+const getMediaUrl = (path) => path?.startsWith('http') ? path : `${API.defaults.baseURL}${path}`;
+
 const SubmissionList = ({ assignmentId }) => {
     const [submissions, setSubmissions] = useState([]);
 
@@ -23,7 +25,11 @@ const SubmissionList = ({ assignmentId }) => {
                 <div key={sub.id} style={{ border: '1px solid #ddd', margin: '10px 0', padding: '10px' }}>
                     <p>Student ID: {sub.student}</p>
                     <p>Note: {sub.content}</p>
-                    {sub.file && <a href={sub.file} target="_blank">Download Submission</a>}
+                    {sub.file && (
+                        <a href={getMediaUrl(sub.file)} target="_blank" rel="noreferrer" className="text-indigo-700 font-semibold hover:text-indigo-900">
+                            Download Submission
+                        </a>
+                    )}
                 </div>
             ))}
         </div>

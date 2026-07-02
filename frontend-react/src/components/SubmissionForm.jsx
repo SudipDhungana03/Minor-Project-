@@ -19,11 +19,7 @@ const SubmissionForm = ({ assignmentId }) => {
         }
 
         try {
-            await API.post('/api/classroom/submissions/', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+            await API.post('/api/classroom/submissions/', formData);
             alert('Assignment submitted successfully!');
             setContent('');
             setFile(null);
@@ -36,24 +32,25 @@ const SubmissionForm = ({ assignmentId }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit} style={{ marginTop: '20px', border: '1px solid #ccc', padding: '15px' }}>
-            <h4>Submit Assignment</h4>
-            <div>
+        <form onSubmit={handleSubmit} style={{ marginTop: '20px', border: '1px solid #e5e7eb', padding: '20px', borderRadius: '18px', backgroundColor: '#ffffff' }}>
+            <h4 style={{ marginBottom: '16px', color: '#111827', fontSize: '1.1rem' }}>Submit Assignment</h4>
+            <div style={{ marginBottom: '16px' }}>
                 <textarea 
                     placeholder="Add a comment or note..." 
                     value={content}
                     onChange={(e) => setContent(e.target.value)} 
-                    style={{ width: '100%', marginBottom: '10px' }}
+                    style={{ width: '100%', minHeight: '120px', marginBottom: '10px', borderRadius: '14px', border: '1px solid #d1d5db', padding: '14px', resize: 'vertical' }}
                 />
             </div>
-            <div>
+            <div style={{ marginBottom: '18px' }}>
                 <input 
                     type="file" 
                     onChange={(e) => setFile(e.target.files[0])} 
                     required 
+                    style={{ borderRadius: '12px', border: '1px solid #d1d5db', padding: '10px', width: '100%' }}
                 />
             </div>
-            <button type="submit" disabled={loading} style={{ marginTop: '10px' }}>
+            <button type="submit" disabled={loading} style={{ marginTop: '10px', width: '100%', borderRadius: '14px', backgroundColor: '#16a34a', color: '#ffffff', fontWeight: 700, padding: '14px 18px', border: 'none', cursor: 'pointer' }}>
                 {loading ? 'Submitting...' : 'Turn In'}
             </button>
         </form>

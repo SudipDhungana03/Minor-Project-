@@ -70,7 +70,7 @@ const StudentDashboard = () => {
                         }}>
                             <h3 style={{ margin: 0, color: '#2c3e50' }}>{c.name}</h3>
                             <p style={{ margin: 0, color: '#7f8c8d' }}>Subject: {c.subject}</p>
-                            <Link to={`/classroom/${c.id}`} style={{ 
+                            <Link to="/assignments" style={{ 
                                 marginTop: '15px', padding: '10px', backgroundColor: '#007acc', 
                                 color: '#fff', borderRadius: '6px', textDecoration: 'none', 
                                 textAlign: 'center', fontWeight: '600' 

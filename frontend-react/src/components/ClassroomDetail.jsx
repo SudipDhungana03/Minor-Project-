@@ -1,6 +1,6 @@
 // frontend-react/src/components/ClassroomDetail.jsx
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import API from '../services/api';
 import AssignmentForm from './AssignmentForm.jsx'; // Importing your form
 
@@ -8,6 +8,7 @@ const ClassroomDetail = () => {
     const { id } = useParams();
     const [classroom, setClassroom] = useState(null);
     const [assignments, setAssignments] = useState([]);
+    const navigate = useNavigate();
 
     const fetchDetails = async () => {
         try {
@@ -24,8 +25,12 @@ const ClassroomDetail = () => {
     };
 
     useEffect(() => {
+        if (localStorage.getItem('role') === 'student') {
+            navigate('/assignments');
+            return;
+        }
         fetchDetails();
-    }, [id]);
+    }, [id, navigate]);
 
     if (!classroom) return <div className="min-h-[60vh] flex items-center justify-center text-slate-500">Loading...</div>;
 
@@ -84,7 +89,7 @@ const ClassroomDetail = () => {
                     </div>
                 </div>
 
-                <AssignmentForm classroomId={id} onAssignmentCreated={fetchDetails} />
+                {isTeacher && <AssignmentForm classroomId={id} onAssignmentCreated={fetchDetails} />}
             </section>
         </div>
     );
