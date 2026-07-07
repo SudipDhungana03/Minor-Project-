@@ -6,12 +6,17 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
-    "serve": "vite"
+    "serve": "vite",
+    "build": "vite build"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.2",
     "@vitejs/plugin-react": "^6.0.2",
+    "autoprefixer": "^10.5.2",
+    "postcss": "^8.5.16",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "tailwindcss": "^4.3.2",
     "vite": "^8.0.16"
   },
   "optionalDependencies": {
