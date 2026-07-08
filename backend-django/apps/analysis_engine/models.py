@@ -1,5 +1,5 @@
 from django.db import models
-from classroom.models import Submission  # Make sure this import matches your project structure
+from apps.classroom.models import Submission  # Make sure this import matches your project structure
 
 class DetectionResult(models.Model):
     # Links the result to a specific student submission

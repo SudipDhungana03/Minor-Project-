@@ -11,6 +11,7 @@ import Sidebar from './components/Sidebar.jsx';
 // Import all existing feature components
 import ClassroomDetail from './components/ClassroomDetail.jsx';
 import AssignmentDetail from './components/AssignmentDetail.jsx';
+import SubmissionDetail from './components/SubmissionDetail.jsx';
 import CreateClassroom from './pages/CreateClassroom.jsx';
 import ManageClasses from './pages/ManageClasses.jsx';
 import Assignments from './pages/Assignments.jsx';
@@ -64,6 +65,7 @@ function App() {
               <Route path="/manage-classes" element={<ManageClasses />} />
               <Route path="/classroom/:id" element={<ClassroomDetail />} />
               <Route path="/assignment/:id" element={<AssignmentDetail />} />
+              <Route path="/submission/:id" element={<SubmissionDetail />} />
               
               {/* Fallback */}
               <Route path="*" element={<div style={{ textAlign: 'center' }}><h3>Page not found.</h3></div>} />
