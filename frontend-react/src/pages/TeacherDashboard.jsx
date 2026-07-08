@@ -39,11 +39,10 @@ const TeacherDashboard = () => {
     return (
         <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'Segoe UI, sans-serif' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px', gap: '24px' }}>
-                <div style={{ maxWidth: '720px' }}>
-                    <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.18em', fontSize: '0.9rem', color: '#6b7280' }}>Teacher Dashboard</p>
-                    <h1 style={{ color: '#111827', fontSize: '3rem', lineHeight: '1.05', margin: '14px 0 10px' }}>Manage your classrooms and review submissions with confidence.</h1>
+                <div>
+                    <h1 style={{ color: '#111827', fontSize: '3rem', lineHeight: '1.05', margin: 0, fontWeight: 700 }}>Teacher Dashboard</h1>
                     {pendingCount > 0 && (
-                        <p style={{ margin: '12px 0 0', color: '#b45309', fontSize: '1rem' }}>
+                        <p style={{ margin: '16px 0 0', color: '#b45309', fontSize: '1rem' }}>
                             You have <strong>{pendingCount}</strong> pending join request{pendingCount === 1 ? '' : 's'}.
                         </p>
                     )}

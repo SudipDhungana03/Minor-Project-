@@ -20,11 +20,7 @@ const AssignmentForm = ({ classroomId, onAssignmentCreated }) => {
     if (file) formData.append('file', file);
 
     try {
-      await API.post('/api/classroom/assignments/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      await API.post('/api/classroom/assignments/', formData);
       setTitle('');
       setDescription('');
       setDueDate('');
