@@ -14,4 +14,4 @@ backend-django/env/
 
 frontend-react/node_modules/
 
-frontend-react/dist/
+frontend-react/dist/\n# Ignore uploaded documents and temp notes\nbackend-django/media/*\n!backend-django/media/.gitkeep\nfrontend-react/ANALYSIS_NOTE.md\n

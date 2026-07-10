@@ -1,3 +1,39 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Highlight for AI-detected chunks */
+.ai-flagged {
+	background-color: rgba(255, 199, 199, 0.6);
+	border-radius: 6px;
+	padding: 0 4px;
+	cursor: pointer;
+	transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.ai-flagged:hover {
+	background-color: rgba(255, 180, 180, 0.9);
+	box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Tooltip simple enhancement (native title used as fallback) */
+.ai-flagged {
+	position: relative;
+}
+
+/* show tooltip on hover with the source URL */
+.ai-flagged[data-source]:hover::after {
+	content: "Source: " attr(data-source);
+	position: absolute;
+	top: -2.25rem;
+	left: 0;
+	background: rgba(0, 0, 0, 0.82);
+	color: #fff;
+	padding: 6px 8px;
+	border-radius: 6px;
+	font-size: 12px;
+	white-space: nowrap;
+	z-index: 50;
+	box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+/* End of AI highlight styles */

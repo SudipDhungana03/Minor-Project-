@@ -9,6 +9,7 @@ urlpatterns = [
 
     # Authentication and Classroom routes
     path('api/', include('apps.authentication.urls')),
+    path('api/', include('apps.analysis_engine.urls')),
     path('api/classroom/', include('apps.classroom.urls')),
 ]
 
