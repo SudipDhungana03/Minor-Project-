@@ -1,0 +1,8 @@
+Django
+djangorestframework
+python-dotenv
+python-docx
+pypdf
+PyPDF2
+python-pptx
+requests
