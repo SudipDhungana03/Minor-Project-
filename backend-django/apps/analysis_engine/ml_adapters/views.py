@@ -7,6 +7,7 @@ import os
 import logging
 import io
 import requests
+from threading import Thread
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +157,7 @@ def detect_submission(request):
             )
             return Response({"message": "Extraction failed", "report": report}, status=200)
 
-    # 2. Run AI detection only
+    # 2. Run AI detection only; source lookup runs separately.
     report = run_analysis(text)
     
     # 3. Save to database
@@ -194,13 +195,22 @@ def verify_submission_sources(request):
                 text = f"{text}\n\n{extracted}" if text.strip() else extracted
         report = run_analysis(text)
 
-    report = run_source_verification(report)
-    DetectionResult.objects.update_or_create(
-        submission=submission,
-        defaults={
-            'is_ai_flagged': report.get('is_ai_generated', False),
-            'report_data': report
-        }
-    )
+    def _verify_in_background(report_data):
+        try:
+            verified = run_source_verification(report_data)
+            DetectionResult.objects.update_or_create(
+                submission=submission,
+                defaults={
+                    'is_ai_flagged': verified.get('is_ai_generated', False),
+                    'report_data': verified
+                }
+            )
+        except Exception:
+            logger.exception('Background source verification failed for submission %s', submission_id)
 
-    return Response({"message": "Source verification completed", "report": report})
+    Thread(target=_verify_in_background, args=(report,), daemon=True).start()
+
+    return Response({
+        "message": "Source verification started",
+        "report": report
+    })

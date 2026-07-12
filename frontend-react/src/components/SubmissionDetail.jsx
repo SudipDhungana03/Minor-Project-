@@ -8,40 +8,112 @@ const SubmissionDetail = () => {
     const [analysis, setAnalysis] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [sourceLoading, setSourceLoading] = useState(false);
+    const [sourceError, setSourceError] = useState(null);
+    const [verifyStatus, setVerifyStatus] = useState(null);
     const contentRef = useRef(null);
+    const pollTimeoutRef = useRef(null);
+
+    const fetchSubmission = async () => {
+        try {
+            const res = await API.get(`/api/classroom/submissions/${id}/`);
+            setSubmission(res.data);
+            if (res.data.analysis_report) {
+                setAnalysis(res.data.analysis_report);
+            }
+        } catch (err) {
+            console.error('Error loading submission', err);
+            setError('Failed to load submission');
+        }
+    };
 
     useEffect(() => {
-        const load = async () => {
-            try {
-                const res = await API.get(`/api/classroom/submissions/${id}/`);
-                setSubmission(res.data);
-                // If backend already provided analysis with submission, use it
-                if (res.data.analysis_report) {
-                    setAnalysis(res.data.analysis_report);
-                }
-            } catch (err) {
-                console.error('Error loading submission', err);
-                setError('Failed to load submission');
+        fetchSubmission();
+        return () => {
+            if (pollTimeoutRef.current) {
+                clearTimeout(pollTimeoutRef.current);
             }
         };
-        load();
     }, [id]);
+
+    const reportHasSourceData = (report) => {
+        return Array.isArray(report?.chunks) && report.chunks.some((chunk) => chunk.source !== undefined && chunk.source !== null);
+    };
+
+    const reportIsVerified = (report) => {
+        return report?.source_verification?.completed === true;
+    };
+
+    const pollForVerificationCompletion = async (attempt = 1) => {
+        if (attempt > 8) {
+            setVerifyStatus('Source lookup is still running in background. Refresh this page later to see the results.');
+            return;
+        }
+
+        try {
+            const res = await API.get(`/api/classroom/submissions/${id}/`);
+            const latest = res.data.analysis_report;
+            if (latest && reportIsVerified(latest) && !reportIsVerified(analysis)) {
+                setAnalysis(latest);
+                setVerifyStatus(reportHasSourceData(latest)
+                    ? 'Source verification completed. Source results are now available.'
+                    : 'Source verification completed. No matching source was found.');
+                return;
+            }
+        } catch (err) {
+            console.warn('Verification poll failed', err);
+        }
+
+        pollTimeoutRef.current = setTimeout(() => pollForVerificationCompletion(attempt + 1), 3000);
+    };
 
     const handleGenerateReport = async () => {
         setLoading(true);
         setError(null);
+        setVerifyStatus(null);
+        setSourceError(null);
         try {
             const res = await API.post('/api/analyze/', {
                 submission_id: id
             });
             const report = res.data.report || res.data;
             setAnalysis(report);
+            setVerifyStatus('Analysis complete. Click Verify Sources to run source lookup.');
             console.debug('Submission analysis report loaded', report);
         } catch (err) {
             console.error('Report generation failed', err);
             setError('Report generation failed. Try again later.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleVerifySources = async (reportToVerify = null) => {
+        const report = reportToVerify || analysis;
+        if (!report) {
+            setVerifyStatus('Run analysis first before verifying sources.');
+            return;
+        }
+        if (sourceLoading) return;
+
+        setSourceLoading(true);
+        setSourceError(null);
+        setVerifyStatus('Source verification started...');
+
+        try {
+            const res = await API.post('/api/verify-sources/', {
+                submission_id: id,
+            });
+            const latestReport = res.data.report || res.data;
+            setAnalysis(latestReport);
+            setVerifyStatus('Source verification started in the background. Checking for results...');
+            pollForVerificationCompletion();
+        } catch (err) {
+            console.error('Source verification failed', err);
+            setSourceError('Source lookup failed. It may still complete in the background.');
+            setVerifyStatus('Source verification failed.');
+        } finally {
+            setSourceLoading(false);
         }
     };
 
@@ -53,9 +125,9 @@ const SubmissionDetail = () => {
     if (!submission && !error) return <div className="p-6">Loading submission...</div>;
 
     return (
-        <div className="ml-72 p-8">{/* shift right to account for sidebar width */}
-            <div className="max-w-4xl bg-white rounded-xl shadow-md p-8">
-                <div className="flex items-start justify-between">
+        <div className="px-8 py-8 min-h-screen">
+            <div className="w-full max-w-5xl mx-auto bg-white rounded-xl shadow-md p-8">
+                <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h2 className="text-2xl font-bold text-gray-900">{submission?.title || 'Submission'}</h2>
                         <p className="text-sm text-gray-500">Student: <strong>{submission?.student_name}</strong></p>
@@ -63,14 +135,29 @@ const SubmissionDetail = () => {
                     </div>
 
                     <div className="flex flex-col items-end gap-3">
-                        <button
-                            onClick={handleGenerateReport}
-                            disabled={loading}
-                            className={`px-4 py-2 rounded-lg font-semibold transition ${loading ? 'bg-indigo-300 text-white cursor-wait' : 'bg-indigo-700 text-white hover:bg-indigo-600'}`}
-                        >
-                            {loading ? 'Generating report...' : 'Generate Report'}
-                        </button>
-                        {error && <div className="text-sm text-red-600">{error}</div>}
+                        <div className="flex flex-row items-center gap-3 flex-wrap justify-end">
+                            <button
+                                type="button"
+                                onClick={handleGenerateReport}
+                                disabled={loading || sourceLoading}
+                                className={`px-4 py-2 rounded-lg font-semibold transition-all duration-150 ${loading ? 'bg-sky-300 text-white cursor-wait opacity-70' : 'bg-sky-600 text-white hover:bg-sky-500 active:scale-[0.98]'} ${!loading ? 'cursor-pointer' : ''}`}
+                            >
+                                {loading ? 'Generating report...' : 'Generate Report'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleVerifySources}
+                                disabled={sourceLoading}
+                                className={`px-4 py-2 rounded-lg font-semibold transition-all duration-150 ${sourceLoading ? 'bg-sky-300 text-white cursor-wait opacity-70' : 'bg-sky-600 text-white hover:bg-sky-500 active:scale-[0.98]'} ${!sourceLoading ? 'cursor-pointer' : ''}`}
+                            >
+                                {sourceLoading ? 'Verifying sources...' : 'Verify Sources'}
+                            </button>
+                        </div>
+                        <div className="flex flex-col gap-1 items-end">
+                            {error && <div className="text-sm text-red-600">{error}</div>}
+                            {sourceError && <div className="text-sm text-amber-600">{sourceError}</div>}
+                            {verifyStatus && <div className="text-sm text-slate-600">{verifyStatus}</div>}
+                        </div>
                     </div>
                 </div>
 
@@ -158,6 +245,19 @@ const SubmissionDetail = () => {
                                             {sourceScore !== null && (
                                                 <div className="mt-2 text-sm text-slate-600">Source confidence: {sourceScore}</div>
                                             )}
+                                            {chunk.source?.search_debug && (
+                                                <div className="mt-3 rounded-2xl bg-slate-50 p-3 text-xs text-slate-600">
+                                                    <p className="font-semibold text-slate-700">Search debug</p>
+                                                    {chunk.source.search_debug.slice(0, 3).map((debug, debugIdx) => (
+                                                        <div key={debugIdx} className="mt-2">
+                                                            <div className="text-slate-500">Engine: {debug.engine}</div>
+                                                            <div className="text-slate-500">Query: {debug.query}</div>
+                                                            <div className="text-slate-500">URLs: {debug.urls.length > 0 ? debug.urls.join(', ') : 'none'}</div>
+                                                            {debug.error && <div className="text-rose-600">Error: {debug.error}</div>}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </article>
                                     );
                                 })}
@@ -166,6 +266,11 @@ const SubmissionDetail = () => {
                     ) : (
                         <div className="prose max-w-none">
                             <p>{submission?.content || submission?.extracted_text || 'No text content available for this submission.'}</p>
+                        </div>
+                    )}
+                    {analysis && sourceLoading && (
+                        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                            Source lookup is running in the background. The report will update when complete.
                         </div>
                     )}
                 </div>
