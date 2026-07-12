@@ -25,9 +25,21 @@ function App() {
 
   // Listen for auth changes so the UI updates without a full page refresh
   useEffect(() => {
-    const handler = () => {
-      setIsAuthenticated(!!localStorage.getItem('access_token'));
+    const handler = async () => {
+      const auth = !!localStorage.getItem('access_token');
+      setIsAuthenticated(auth);
       setRole(localStorage.getItem('role'));
+      if (!auth) {
+        setUser(null);
+        return;
+      }
+      try {
+        const res = await API.get('/api/user/profile/');
+        setUser(res.data);
+        if (res.data.username) localStorage.setItem('username', res.data.username);
+      } catch (e) {
+        setUser(null);
+      }
     };
     window.addEventListener('authChanged', handler);
     return () => window.removeEventListener('authChanged', handler);
