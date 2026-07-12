@@ -1,11 +1,13 @@
 try:
+    import os
     from firecrawl import FirecrawlApp
     from difflib import SequenceMatcher
     import requests
     from bs4 import BeautifulSoup
 
-    # Initialize Firecrawl (replace with your actual key or use env variables)
-    app = FirecrawlApp(api_key='fc-9a1c1a34453b4daa8d48205cea33317b')
+    # Initialize Firecrawl with optional environment variable support.
+    api_key = os.environ.get('FIRECRAWL_API_KEY', 'fc-46f0602d3d81491cad0c5f66fd4c6123')
+    app = FirecrawlApp(api_key=api_key)
 
     def scrape_web_content(url):
         try:
@@ -27,9 +29,15 @@ try:
                 similarity = SequenceMatcher(None, student_text, web_content).ratio()
                 
                 if similarity > 0.6: # Threshold for 'suspicious'
-                    return {"status": "Plagiarism Detected", "source": doc.get('url'), "score": similarity}
+                    source_url = doc.get('url')
+                    return {
+                        "status": "Plagiarism Detected",
+                        "source": source_url,
+                        "source_url": source_url,
+                        "score": similarity,
+                    }
                     
-        return {"status": "Clear", "source": None, "score": 0}
+        return {"status": "Clear", "source": None, "source_url": None, "score": 0}
 except Exception:
     # If firecrawl or dependencies aren't installed or fail, provide a safe fallback.
     def find_plagiarism(student_text):

@@ -23,6 +23,12 @@ const Login = () => {
             localStorage.setItem('refresh_token', data.refresh);
             localStorage.setItem('role', data.role);
             
+            // Notify the app that auth state changed so UI updates without refresh
+            try {
+                window.dispatchEvent(new Event('authChanged'));
+            } catch (e) {
+                // ignore in older browsers
+            }
             setMessage('Login successful! Redirecting...');
             
             // Role-based redirection

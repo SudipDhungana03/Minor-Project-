@@ -26,14 +26,16 @@ class RegisterSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        # These fields will be updated during the CompleteProfile step
-        fields = ['role', 'name', 'organization']
+        # These fields will be returned/updated via the profile endpoint
+        fields = ['username', 'email', 'role', 'name', 'organization']
         
         # Optional: set these to not required so they can be updated one by one
         extra_kwargs = {
             'role': {'required': False},
             'name': {'required': False},
-            'organization': {'required': False}
+            'organization': {'required': False},
+            'email': {'required': False},
+            'username': {'required': False}
         }
 
 # --- Custom Token Serializer for Role-Based Login ---
