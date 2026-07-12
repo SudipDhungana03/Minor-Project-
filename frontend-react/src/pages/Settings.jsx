@@ -33,7 +33,7 @@ const Settings = () => {
   };
 
   const saveProfile = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setMessage('');
     try {
       if (avatarFile) {
@@ -77,7 +77,7 @@ const Settings = () => {
         <h1 className="text-2xl font-semibold text-slate-900 mb-2">Settings</h1>
         <p className="text-sm text-slate-500 mb-6">Manage your account details and password.</p>
 
-        <form onSubmit={saveProfile} className="space-y-4">
+        <form onSubmit={saveProfile} className="space-y-4" id="settings-form">
           <div className="flex items-center gap-6">
             <div>
               <div style={{ width: 84, height: 84, borderRadius: 9999, overflow: 'hidden', background: '#eef2ff' }}>
@@ -98,16 +98,18 @@ const Settings = () => {
             </div>
           </div>
 
-          <div className="flex gap-3">
-            {!editing ? (
-              <button type="button" onClick={() => setEditing(true)} className="rounded-2xl bg-indigo-600 px-4 py-2 text-white font-semibold">Edit profile</button>
-            ) : (
-              <>
-                <button type="submit" className="rounded-2xl bg-indigo-600 px-4 py-2 text-white font-semibold">Save profile</button>
-                <button type="button" onClick={() => { setEditing(false); /* reload profile to discard changes */ window.location.reload(); }} className="rounded-2xl bg-slate-100 px-4 py-2">Cancel</button>
-              </>
-            )}
-          </div>
+        </form>
+
+        <div className="mt-4">
+          {!editing ? (
+            <button type="button" onClick={() => setEditing(true)} className="rounded-2xl bg-indigo-600 px-4 py-2 text-white font-semibold">Edit profile</button>
+          ) : (
+            <div className="flex gap-3">
+              <button type="button" onClick={(e)=>saveProfile(e)} className="rounded-2xl bg-indigo-600 px-4 py-2 text-white font-semibold">Save profile</button>
+              <button type="button" onClick={async () => { setEditing(false); setMessage(''); try { const res = await API.get('/api/user/profile/'); setProfile({ name: res.data.name || '', organization: res.data.organization || '', email: res.data.email || '', username: res.data.username || '' }); setPreview(res.data.avatar_url || null); } catch (err) { } }} className="rounded-2xl bg-slate-100 px-4 py-2">Cancel</button>
+            </div>
+          )}
+        </div>
           {message && <div className="text-sm text-emerald-600">{message}</div>}
         </form>
 
