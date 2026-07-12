@@ -87,10 +87,13 @@ def _normalize_probability(prediction, proba_values):
     try:
         if proba_values is None:
             return 1.0 if prediction == 1 else 0.0
-        if isinstance(proba_values, (list, tuple)):
-            if len(proba_values) == 2:
-                return float(proba_values[1])
-            return float(max(proba_values))
+
+        if hasattr(proba_values, '__len__'):
+            proba_list = list(proba_values)
+            if len(proba_list) == 2:
+                return float(proba_list[1])
+            return float(max(proba_list))
+
         return float(proba_values)
     except Exception:
         return 1.0 if prediction == 1 else 0.0
