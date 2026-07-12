@@ -18,9 +18,17 @@ import Assignments from './pages/Assignments.jsx';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
-  
-  // Helper to determine role and path
-  const role = localStorage.getItem('role');
+  const [role, setRole] = useState(localStorage.getItem('role'));
+
+  // Listen for auth changes so the UI updates without a full page refresh
+  useEffect(() => {
+    const handler = () => {
+      setIsAuthenticated(!!localStorage.getItem('access_token'));
+      setRole(localStorage.getItem('role'));
+    };
+    window.addEventListener('authChanged', handler);
+    return () => window.removeEventListener('authChanged', handler);
+  }, []);
   
   const handleLogout = () => {
     localStorage.removeItem('access_token');
