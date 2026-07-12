@@ -1,6 +1,6 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .detector_service import run_analysis
+from .detector_service import run_analysis, run_source_verification
 from ..models import DetectionResult
 from apps.classroom.models import Submission
 import os
@@ -156,11 +156,10 @@ def detect_submission(request):
             )
             return Response({"message": "Extraction failed", "report": report}, status=200)
 
-    # 2. Run analysis
+    # 2. Run AI detection only
     report = run_analysis(text)
     
     # 3. Save to database
-    # We use update_or_create so we don't duplicate results if they click "Analyze" twice
     result, created = DetectionResult.objects.update_or_create(
         submission=submission,
         defaults={
@@ -173,3 +172,35 @@ def detect_submission(request):
         "message": "Analysis saved", 
         "report": report
     })
+
+@api_view(['POST'])
+def verify_submission_sources(request):
+    submission_id = request.data.get('submission_id')
+
+    try:
+        submission = Submission.objects.get(id=submission_id)
+    except Submission.DoesNotExist:
+        return Response({"error": "Submission not found"}, status=404)
+
+    report = None
+    existing = DetectionResult.objects.filter(submission=submission).order_by('-created_at').first()
+    if existing and existing.report_data:
+        report = existing.report_data
+    else:
+        text = submission.content or ''
+        if submission.file:
+            extracted = _extract_text_from_file(submission.file)
+            if extracted:
+                text = f"{text}\n\n{extracted}" if text.strip() else extracted
+        report = run_analysis(text)
+
+    report = run_source_verification(report)
+    DetectionResult.objects.update_or_create(
+        submission=submission,
+        defaults={
+            'is_ai_flagged': report.get('is_ai_generated', False),
+            'report_data': report
+        }
+    )
+
+    return Response({"message": "Source verification completed", "report": report})

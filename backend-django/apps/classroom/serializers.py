@@ -1,3 +1,4 @@
+import os
 from rest_framework import serializers
 from .models import Classroom, Assignment, Submission, JoinRequest
 from apps.analysis_engine.models import DetectionResult
@@ -21,11 +22,13 @@ class SubmissionSerializer(serializers.ModelSerializer):
     student_username = serializers.CharField(source='student.username', read_only=True)
     analysis_report = serializers.SerializerMethodField()
     extracted_text = serializers.SerializerMethodField()
+    file_exists = serializers.SerializerMethodField()
+    file_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Submission
-        fields = ['id', 'assignment', 'student', 'student_username', 'content', 'file', 'submitted_at', 'analysis_report', 'extracted_text']
-        read_only_fields = ['student', 'student_username', 'submitted_at', 'analysis_report', 'extracted_text']
+        fields = ['id', 'assignment', 'student', 'student_username', 'content', 'file', 'file_url', 'file_exists', 'submitted_at', 'analysis_report', 'extracted_text']
+        read_only_fields = ['student', 'student_username', 'submitted_at', 'analysis_report', 'extracted_text', 'file_exists', 'file_url']
 
     def get_analysis_report(self, obj):
         try:
@@ -39,6 +42,23 @@ class SubmissionSerializer(serializers.ModelSerializer):
             return obj.content
         if obj.file:
             return _extract_text_from_file(obj.file)
+        return None
+
+    def get_file_exists(self, obj):
+        if not obj.file or not obj.file.name:
+            return False
+        try:
+            path = obj.file.path
+            return bool(path and os.path.exists(path))
+        except Exception:
+            return False
+
+    def get_file_url(self, obj):
+        if obj.file and obj.file.name:
+            try:
+                return obj.file.url
+            except Exception:
+                return None
         return None
 
 class JoinRequestSerializer(serializers.ModelSerializer):

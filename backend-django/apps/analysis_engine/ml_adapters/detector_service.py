@@ -156,13 +156,6 @@ def run_analysis(text):
             })
             continue
 
-        try:
-            if prediction == 1:
-                source_data = find_plagiarism(chunk)
-        except Exception:
-            logger.exception('Error while running plagiarism check for chunk %s', i)
-            source_data = {"status": "error", "source_url": None, "score": 0}
-
         analysis_results.append({
             "chunk_index": i,
             "text": chunk,
@@ -170,9 +163,11 @@ def run_analysis(text):
             "word_count": len(chunk.split()),
             "is_ai": bool(prediction == 1),
             "probability": probability,
-            "source": source_data,
+            "source": None,
         })
 
+    # Run source lookup in a second pass after the AI scoring is complete.
+    # This keeps the initial report fast and still adds source info when needed.
     total_words = sum(r['word_count'] for r in analysis_results)
     ai_words = sum(r['word_count'] for r in analysis_results if r['is_ai'])
     total_chunks = len(analysis_results)
@@ -197,5 +192,26 @@ def run_analysis(text):
         "verdict": verdict,
         "chunks": analysis_results
     }
+
+
+def _needs_source_lookup(chunk):
+    return bool(chunk.get('is_ai')) or chunk.get('probability', 0) >= 0.35 or chunk.get('word_count', 0) <= 100
+
+
+def run_source_verification(report):
+    if not report or 'chunks' not in report:
+        return report
+
+    for chunk_data in report['chunks']:
+        if chunk_data.get('source') is not None:
+            continue
+        if _needs_source_lookup(chunk_data):
+            try:
+                chunk_data['source'] = find_plagiarism(chunk_data['text'])
+            except Exception:
+                logger.exception('Error while running plagiarism check for chunk %s', chunk_data.get('chunk_index'))
+                chunk_data['source'] = {"status": "error", "source_url": None, "score": 0}
+
+    return report
 
 
