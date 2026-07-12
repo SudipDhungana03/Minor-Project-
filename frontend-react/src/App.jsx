@@ -41,8 +41,24 @@ function App() {
         setUser(null);
       }
     };
+
+    const profileUpdatedHandler = (ev) => {
+      // When Settings emits a profileUpdated event include the new data immediately
+      if (ev?.detail) {
+        setUser(ev.detail);
+        if (ev.detail.username) localStorage.setItem('username', ev.detail.username);
+      } else {
+        // fallback: run the normal authChanged flow
+        handler();
+      }
+    };
+
     window.addEventListener('authChanged', handler);
-    return () => window.removeEventListener('authChanged', handler);
+    window.addEventListener('profileUpdated', profileUpdatedHandler);
+    return () => {
+      window.removeEventListener('authChanged', handler);
+      window.removeEventListener('profileUpdated', profileUpdatedHandler);
+    };
   }, []);
 
   useEffect(() => {

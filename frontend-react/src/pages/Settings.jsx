@@ -45,9 +45,23 @@ const Settings = () => {
       } else {
         await API.patch('/api/user/profile/', { name: profile.name, organization: profile.organization });
       }
+      // Fetch the latest profile from server to ensure fresh data
+      let latest = null;
+      try {
+        const r = await API.get('/api/user/profile/');
+        latest = r.data;
+        setProfile({ name: latest.name || '', organization: latest.organization || '', email: latest.email || '', username: latest.username || '' });
+        if (latest.avatar_url) setPreview(latest.avatar_url);
+        if (latest.username) localStorage.setItem('username', latest.username);
+      } catch (e) {
+        // ignore
+      }
+
       setMessage('Profile updated successfully.');
       setEditing(false);
-      window.dispatchEvent(new Event('authChanged'));
+      // Notify app to refresh header; include latest profile as detail when available
+      if (latest) window.dispatchEvent(new CustomEvent('profileUpdated', { detail: latest }));
+      else window.dispatchEvent(new Event('authChanged'));
     } catch (err) {
       console.error(err);
       setMessage(err.response?.data?.detail || 'Failed to update profile.');
@@ -111,7 +125,6 @@ const Settings = () => {
           )}
         </div>
           {message && <div className="text-sm text-emerald-600">{message}</div>}
-        </form>
 
         <hr className="my-6" />
 
