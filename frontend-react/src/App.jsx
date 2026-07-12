@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Login from './components/Login.jsx';
 import Signup from './components/Signup.jsx';
@@ -35,6 +35,7 @@ function App() {
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('role');
     setIsAuthenticated(false);
+    try { window.dispatchEvent(new Event('authChanged')); } catch(e) {}
     window.location.href = '/login';
   };
 
