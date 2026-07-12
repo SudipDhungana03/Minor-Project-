@@ -7,7 +7,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, ProfileSerializer
-from rest_framework.generics import UpdateAPIView
+from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
@@ -87,10 +87,10 @@ def dashboard_view(request):
     }, status=status.HTTP_200_OK)
 
 # --- NEW: Update Profile View ---
-class UpdateProfileView(UpdateAPIView):
+class UpdateProfileView(RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ProfileSerializer
 
     def get_object(self):
-        # This ensures the user can only update their own profile
+        # This ensures the user can only view/update their own profile
         return self.request.user

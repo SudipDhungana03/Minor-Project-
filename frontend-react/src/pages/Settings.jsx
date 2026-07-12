@@ -3,6 +3,7 @@ import API from '../services/api';
 
 const Settings = () => {
   const [profile, setProfile] = useState({ name: '', organization: '', email: '' });
+  const [editing, setEditing] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [message, setMessage] = useState('');
@@ -12,12 +13,12 @@ const Settings = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await API.get('/api/user/profile/');
-        setProfile({ name: res.data.name || '', organization: res.data.organization || '', email: res.data.email || '' });
-        if (res.data.avatar_url) setPreview(res.data.avatar_url);
-      } catch (err) {
-        // ignore
-      }
+          const res = await API.get('/api/user/profile/');
+          setProfile({ name: res.data.name || '', organization: res.data.organization || '', email: res.data.email || '', username: res.data.username || '' });
+          if (res.data.avatar_url) setPreview(res.data.avatar_url);
+        } catch (err) {
+          // ignore
+        }
     };
     load();
   }, []);
@@ -45,6 +46,7 @@ const Settings = () => {
         await API.patch('/api/user/profile/', { name: profile.name, organization: profile.organization });
       }
       setMessage('Profile updated successfully.');
+      setEditing(false);
       window.dispatchEvent(new Event('authChanged'));
     } catch (err) {
       console.error(err);
@@ -81,24 +83,30 @@ const Settings = () => {
               <div style={{ width: 84, height: 84, borderRadius: 9999, overflow: 'hidden', background: '#eef2ff' }}>
                 {preview ? <img src={preview} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5', fontWeight: 700 }}> { (profile.name||profile.email||'U').slice(0,1).toUpperCase() } </div> }
               </div>
-              <input type="file" accept="image/*" onChange={handleFile} className="mt-2" />
+              <input type="file" accept="image/*" onChange={handleFile} className="mt-2" disabled={!editing} />
             </div>
 
             <div style={{ flex: 1 }}>
               <label className="text-sm text-slate-600">Full name</label>
-              <input name="name" value={profile.name} onChange={handleChange} className="block w-full border rounded-md p-2 mt-1" />
+              <input name="name" value={profile.name} onChange={handleChange} className="block w-full border rounded-md p-2 mt-1" disabled={!editing} />
 
               <label className="text-sm text-slate-600 mt-3">Organization</label>
-              <input name="organization" value={profile.organization} onChange={handleChange} className="block w-full border rounded-md p-2 mt-1" />
+              <input name="organization" value={profile.organization} onChange={handleChange} className="block w-full border rounded-md p-2 mt-1" disabled={!editing} />
 
               <label className="text-sm text-slate-600 mt-3">Email (read-only)</label>
-              <input name="email" value={profile.email} disabled className="block w-full border rounded-md p-2 mt-1 bg-slate-50" />
+              <input name="email" value={profile.email} onChange={handleChange} disabled={!editing} className={editing ? 'block w-full border rounded-md p-2 mt-1' : 'block w-full border rounded-md p-2 mt-1 bg-slate-50'} />
             </div>
           </div>
 
           <div className="flex gap-3">
-            <button type="submit" className="rounded-2xl bg-indigo-600 px-4 py-2 text-white font-semibold">Save profile</button>
-            <button type="button" onClick={() => { setProfile({ name: '', organization: '', email: '' }); setPreview(null); setAvatarFile(null); }} className="rounded-2xl bg-slate-100 px-4 py-2">Reset</button>
+            {!editing ? (
+              <button type="button" onClick={() => setEditing(true)} className="rounded-2xl bg-indigo-600 px-4 py-2 text-white font-semibold">Edit profile</button>
+            ) : (
+              <>
+                <button type="submit" className="rounded-2xl bg-indigo-600 px-4 py-2 text-white font-semibold">Save profile</button>
+                <button type="button" onClick={() => { setEditing(false); /* reload profile to discard changes */ window.location.reload(); }} className="rounded-2xl bg-slate-100 px-4 py-2">Cancel</button>
+              </>
+            )}
           </div>
           {message && <div className="text-sm text-emerald-600">{message}</div>}
         </form>
