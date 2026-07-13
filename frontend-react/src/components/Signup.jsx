@@ -105,7 +105,9 @@ const Signup = () => {
                 ) : (
                     <>
                         <p style={{ textAlign: 'center', fontSize: '0.9em', color: '#666' }}>
-                            We've sent a verification code to <b>{formData.email}</b>.
+                            {formData.email
+                                ? <>We've sent a verification code to <b>{formData.email}</b>.</>
+                                : 'Enter the 6-digit code sent to your email.'}
                         </p>
                         <input 
                             className={styles.inputField} 
