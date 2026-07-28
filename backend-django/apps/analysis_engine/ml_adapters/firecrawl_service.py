@@ -211,7 +211,15 @@ def _build_search_result(engine, query, urls=None, error=None, raw=None):
     if error:
         result['error'] = error
     if raw is not None:
-        result['raw'] = raw
+        try:
+            if isinstance(raw, (str, int, float, bool)):
+                result['raw'] = raw
+            elif isinstance(raw, dict):
+                result['raw'] = raw
+            else:
+                result['raw'] = repr(raw)
+        except Exception:
+            result['raw'] = f'<unserializable {type(raw).__name__}>'
     return result
 
 
@@ -321,6 +329,7 @@ def _search_firecrawl(domain, query):
             timeout=FIRECRAWL_TIMEOUT_MS,
         )
         urls = []
+        web_results = []
         for result in getattr(response, 'web', []) or []:
             if isinstance(result, dict):
                 url = result.get('url')
@@ -328,9 +337,10 @@ def _search_firecrawl(domain, query):
                 url = getattr(result, 'url', None)
             if url and domain in url:
                 urls.append(url)
+            web_results.append(result if isinstance(result, dict) else {'url': getattr(result, 'url', None), 'status': getattr(result, 'status', None)})
             if len(urls) >= 5:
                 break
-        return _build_search_result('firecrawl', search_phrase, urls=urls, raw=response)
+        return _build_search_result('firecrawl', search_phrase, urls=urls, raw={'web': web_results})
     except Exception as err:
         message = str(err)
         logger.warning('Firecrawl search failed for domain=%s query=%s: %s', domain, query, message)

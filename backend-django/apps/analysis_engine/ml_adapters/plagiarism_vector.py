@@ -14,6 +14,37 @@ except Exception:  # pragma: no cover - optional dependency fallback
     TfidfVectorizer = None
     cosine_similarity = None
 
+"""
+Plagiarism Detection Module
+
+This module compares submissions using three complementary similarity metrics:
+
+1. **Jaccard Similarity (J)**: Set-based token overlap
+   - Counts unique tokens (words) in both documents
+   - Formula: |intersection| / |union|
+   - Range: 0 to 1 (higher = more similar)
+   - Best for: Detecting similar vocabulary/concepts
+   
+2. **TF-IDF Similarity (T)**: Term Frequency-Inverse Document Frequency
+   - Uses sklearn's TfidfVectorizer with bigrams
+   - Measures importance of terms in documents
+   - Formula: Cosine similarity between TF-IDF vectors
+   - Range: 0 to 1 (higher = more similar)
+   - Best for: Detecting content similarity while reducing common words
+   
+3. **Semantic Similarity (S)**: Weighted token overlap
+   - Considers frequency of shared tokens
+   - Normalized by document term frequency vectors
+   - Formula: sum(min_frequency) / sqrt(left_norm² × right_norm²)
+   - Range: 0 to 1 (higher = more similar)
+   - Best for: Finding substantial shared content
+
+A submission pair is flagged as suspicious if:
+- Jaccard >= 0.2 OR TF-IDF >= 0.2 OR Semantic >= 0.15 OR shared snippets found
+
+The module also extracts and highlights overlapping text segments for review.
+"""
+
 
 def extract_text_from_submission_file(file_field):
     """Extract text from PDF, DOCX, or PPTX files from storage or a remote URL."""
@@ -85,6 +116,45 @@ def extract_text_from_submission_file(file_field):
                     if hasattr(shape, 'text') and shape.text:
                         texts.append(shape.text)
             return "\n".join(texts)
+        except Exception:
+            return None
+
+    if ext == '.html' or ext == '.htm':
+        try:
+            from html.parser import HTMLParser
+            
+            class HTMLTextExtractor(HTMLParser):
+                def __init__(self):
+                    super().__init__()
+                    self.text = []
+                    self.skip_content = False
+
+                def handle_starttag(self, tag, attrs):
+                    if tag in ['script', 'style', 'head', 'meta']:
+                        self.skip_content = True
+
+                def handle_endtag(self, tag):
+                    if tag in ['script', 'style', 'head', 'meta']:
+                        self.skip_content = False
+
+                def handle_data(self, data):
+                    if not self.skip_content:
+                        text = data.strip()
+                        if text:
+                            self.text.append(text)
+
+                def get_text(self):
+                    return "\n".join(self.text)
+
+            if use_bytes:
+                html_content = use_bytes.read().decode('utf-8', errors='ignore')
+            else:
+                with open(source, 'r', encoding='utf-8', errors='ignore') as f:
+                    html_content = f.read()
+            
+            parser = HTMLTextExtractor()
+            parser.feed(html_content)
+            return parser.get_text()
         except Exception:
             return None
 

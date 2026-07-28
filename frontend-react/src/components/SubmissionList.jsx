@@ -227,7 +227,7 @@ const SubmissionList = ({ assignmentId }) => {
                                                                         {cell.flagged ? 'Review' : 'Low'}
                                                                     </button>
                                                                 )}
-                                                                <div style={{ marginTop: '6px', fontSize: '0.85rem', color: '#475569' }}>
+                                                                <div style={{ marginTop: '6px', fontSize: '0.85rem', color: '#475569', title: 'J=Jaccard (token overlap) · T=TF-IDF (term frequency) · S=Semantic (weighted overlap)' }}>
                                                                     J: {cell.scores?.jaccard ?? 0} · T: {cell.scores?.tfidf ?? 0} · S: {cell.scores?.semantic ?? 0}
                                                                 </div>
                                                             </td>

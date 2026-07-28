@@ -116,6 +116,47 @@ def _extract_text_from_file(file_field):
                 logger.exception('PPTX extraction failed for %s', source or url)
                 return None
 
+        # HTML extraction
+        if ext == '.html' or ext == '.htm':
+            try:
+                from html.parser import HTMLParser
+                
+                class HTMLTextExtractor(HTMLParser):
+                    def __init__(self):
+                        super().__init__()
+                        self.text = []
+                        self.skip_content = False
+
+                    def handle_starttag(self, tag, attrs):
+                        if tag in ['script', 'style', 'head', 'meta']:
+                            self.skip_content = True
+
+                    def handle_endtag(self, tag):
+                        if tag in ['script', 'style', 'head', 'meta']:
+                            self.skip_content = False
+
+                    def handle_data(self, data):
+                        if not self.skip_content:
+                            text = data.strip()
+                            if text:
+                                self.text.append(text)
+
+                    def get_text(self):
+                        return "\n".join(self.text)
+
+                if use_bytes:
+                    html_content = use_bytes.read().decode('utf-8', errors='ignore')
+                else:
+                    with open(source, 'r', encoding='utf-8', errors='ignore') as f:
+                        html_content = f.read()
+                
+                parser = HTMLTextExtractor()
+                parser.feed(html_content)
+                return parser.get_text()
+            except Exception:
+                logger.exception('HTML extraction failed for %s', source or url)
+                return None
+
     except Exception:
         logger.exception('Unexpected error extracting text from %s', source or url)
         return None
@@ -219,6 +260,16 @@ def verify_submission_sources(request):
 
 @api_view(['POST'])
 def run_batch_plagiarism_analysis(request):
+    """
+    Batch plagiarism comparison endpoint.
+    
+    Compares multiple submissions using three similarity metrics:
+    - J (Jaccard): Set-based token overlap (0-1 scale)
+    - T (TF-IDF): Term frequency-inverse document frequency cosine similarity (0-1 scale)
+    - S (Semantic): Weighted token overlap normalized by term frequency (0-1 scale)
+    
+    Extracts text from PDF, DOCX, PPTX, and HTML files and caches in database for faster future analysis.
+    """
     submission_ids = request.data.get('submission_ids') or []
     if not submission_ids:
         return Response({'error': 'At least one submission id is required.'}, status=400)
@@ -230,9 +281,19 @@ def run_batch_plagiarism_analysis(request):
         except Submission.DoesNotExist:
             continue
 
+        # Use cached extracted text if available, otherwise extract and cache
         text = submission.content or ''
         if submission.file:
-            extracted = extract_text_from_submission_file(submission.file)
+            if submission.extracted_text:
+                # Use cached extracted text
+                extracted = submission.extracted_text
+            else:
+                # Extract text and cache it
+                extracted = extract_text_from_submission_file(submission.file)
+                if extracted:
+                    submission.extracted_text = extracted
+                    submission.save(update_fields=['extracted_text'])
+            
             if extracted:
                 text = f"{text}\n\n{extracted}" if text.strip() else extracted
 
@@ -248,4 +309,9 @@ def run_batch_plagiarism_analysis(request):
     if not submissions:
         return Response({'error': 'No valid submissions were found.'}, status=404)
 
-    return Response(build_similarity_report(submissions))
+    report = build_similarity_report(submissions)
+    # Include extracted text in submitted_files for frontend display
+    for idx, file_data in enumerate(report.get('submitted_files', [])):
+        if idx < len(submissions):
+            file_data['extracted_text'] = submissions[idx].get('text', '')
+    return Response(report)

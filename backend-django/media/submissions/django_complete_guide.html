@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Django — Complete Study Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;--green:#3fb950;--green-dim:#122a1a;--blue:#58a6ff;--blue-dim:#112030;--orange:#f0883e;--orange-dim:#2d1a08;--purple:#bc8cff;--purple-dim:#1e1030;--red:#f85149;--red-dim:#2d0e0e;--yellow:#e3b341;--yellow-dim:#2a1f06;--text:#e6edf3;--dim:#7d8590;--muted:#484f58}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);line-height:1.7;font-size:15px}
+a{color:var(--blue);text-decoration:none}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(160deg,#0d1117 0%,#0f1f12 40%,#0d1117 100%);border-bottom:1px solid var(--border);padding:56px 24px 48px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(63,185,80,.08),transparent);pointer-events:none}
+.badge{display:inline-block;background:var(--green-dim);color:var(--green);border:1px solid rgba(63,185,80,.4);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:18px}
+.hero h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;color:#fff;line-height:1.2;margin-bottom:12px}
+.hero h1 em{color:var(--green);font-style:normal}
+.hero p{color:var(--dim);font-size:15px;max-width:580px;margin:0 auto 32px}
+.stats{display:flex;justify-content:center;gap:36px;flex-wrap:wrap}
+.stat-num{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;color:var(--green)}
+.stat-lbl{font-size:11px;color:var(--dim);margin-top:2px}
+
+/* ── NAV ── */
+.topnav{position:sticky;top:0;z-index:100;background:rgba(13,17,23,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);overflow-x:auto;white-space:nowrap;padding:0 16px}
+.topnav::-webkit-scrollbar{height:3px}
+.topnav::-webkit-scrollbar-thumb{background:var(--muted);border-radius:3px}
+.nav-inner{display:inline-flex;gap:2px;padding:8px 0}
+.nbtn{background:none;border:none;color:var(--dim);font-family:'Sora',sans-serif;font-size:12px;font-weight:600;padding:7px 13px;border-radius:6px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.nbtn:hover{background:var(--surface2);color:var(--text)}
+.nbtn.on{background:var(--green-dim);color:var(--green)}
+
+/* ── LAYOUT ── */
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+.sec{display:none;padding:40px 0 64px;animation:fadeUp .3s ease}
+.sec.on{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* ── SECTION HEADER ── */
+.sec-head{display:flex;align-items:center;gap:14px;margin-bottom:32px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.sec-ico{width:46px;height:46px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.sec-title h2{font-size:21px;font-weight:700;color:#fff}
+.sec-title p{font-size:13px;color:var(--dim);margin-top:3px}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;margin-bottom:18px}
+.card-title{font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:8px;color:#fff}
+.card p,.card li{color:var(--dim);font-size:14px;line-height:1.75}
+.card ul,.card ol{padding-left:20px;margin-top:8px}
+.card li{margin-bottom:6px}
+.card b{color:var(--text)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:700px){.grid2,.grid3{grid-template-columns:1fr}}
+
+/* ── HIGHLIGHT CARDS ── */
+.hcard{border-radius:12px;padding:18px 20px;margin-bottom:14px}
+.hcard.green{background:var(--green-dim);border:1px solid rgba(63,185,80,.3)}
+.hcard.blue{background:var(--blue-dim);border:1px solid rgba(88,166,255,.3)}
+.hcard.orange{background:var(--orange-dim);border:1px solid rgba(240,136,62,.3)}
+.hcard.purple{background:var(--purple-dim);border:1px solid rgba(188,140,255,.3)}
+.hcard.red{background:var(--red-dim);border:1px solid rgba(248,81,73,.3)}
+.hcard.yellow{background:var(--yellow-dim);border:1px solid rgba(227,179,65,.3)}
+.hcard h4{font-size:14px;font-weight:700;margin-bottom:8px}
+.hcard.green h4{color:var(--green)}
+.hcard.blue h4{color:var(--blue)}
+.hcard.orange h4{color:var(--orange)}
+.hcard.purple h4{color:var(--purple)}
+.hcard.red h4{color:var(--red)}
+.hcard.yellow h4{color:var(--yellow)}
+.hcard p,.hcard li{color:var(--dim);font-size:13.5px;line-height:1.7}
+.hcard ul{padding-left:18px;margin-top:6px}
+
+/* ── CODE ── */
+.cblock{background:#0a0e13;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:16px 0;font-family:'JetBrains Mono',monospace;font-size:13px}
+.chead{background:var(--surface2);padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.clang{color:var(--dim);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.cdots{display:flex;gap:5px}
+.cdots span{width:10px;height:10px;border-radius:50%}
+.dr{background:#f85149}.dy{background:#e3b341}.dg{background:#3fb950}
+pre{padding:18px;overflow-x:auto;line-height:1.65}
+pre code{color:#e6edf3}
+.kw{color:#ff7b72}
+.str{color:#a5d6ff}
+.cm{color:#6a737d;font-style:italic}
+.fn{color:#d2a8ff}
+.num{color:#79c0ff}
+.cls{color:#ffa657}
+.dec{color:#79c0ff}
+
+/* ── TABLES ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{background:var(--surface2);padding:10px 14px;text-align:left;color:var(--text);font-weight:700;border-bottom:2px solid var(--border)}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--dim)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2);color:var(--text)}
+.tag{display:inline-block;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.tag.g{background:var(--green-dim);color:var(--green)}
+.tag.b{background:var(--blue-dim);color:var(--blue)}
+.tag.o{background:var(--orange-dim);color:var(--orange)}
+.tag.p{background:var(--purple-dim);color:var(--purple)}
+.tag.r{background:var(--red-dim);color:var(--red)}
+
+/* ── DIAGRAMS (SVG) ── */
+.diagram{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin:20px 0;text-align:center;overflow-x:auto}
+.diagram svg{max-width:100%;height:auto}
+
+/* ── STEPS ── */
+.steps{counter-reset:step}
+.step{display:flex;gap:16px;margin-bottom:20px;align-items:flex-start}
+.step-num{flex-shrink:0;width:32px;height:32px;border-radius:50%;background:var(--green-dim);border:2px solid var(--green);color:var(--green);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+.step-body h4{font-size:14px;font-weight:700;color:#fff;margin-bottom:4px}
+.step-body p{font-size:13.5px;color:var(--dim)}
+
+/* ── ANALOGY BOX ── */
+.analogy{background:linear-gradient(135deg,var(--purple-dim),var(--blue-dim));border:1px solid rgba(188,140,255,.3);border-radius:12px;padding:20px 22px;margin:16px 0}
+.analogy-label{font-size:11px;font-weight:700;color:var(--purple);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.analogy p{font-size:14px;color:var(--text);line-height:1.7}
+
+/* ── WARN BOX ── */
+.warn{background:var(--yellow-dim);border:1px solid rgba(227,179,65,.35);border-radius:10px;padding:14px 18px;margin:14px 0;font-size:13.5px;color:var(--dim)}
+.warn strong{color:var(--yellow)}
+.tip{background:var(--green-dim);border:1px solid rgba(63,185,80,.35);border-radius:10px;padding:14px 18px;margin:14px 0;font-size:13.5px;color:var(--dim)}
+.tip strong{color:var(--green)}
+.danger{background:var(--red-dim);border:1px solid rgba(248,81,73,.35);border-radius:10px;padding:14px 18px;margin:14px 0;font-size:13.5px;color:var(--dim)}
+.danger strong{color:var(--red)}
+
+/* ── H3 ── */
+h3{font-size:17px;font-weight:700;color:#fff;margin:28px 0 12px;padding-left:12px;border-left:3px solid var(--green)}
+h4{font-size:14px;font-weight:700;color:var(--text);margin:18px 0 8px}
+
+/* ── FLOW ── */
+.flow{display:flex;align-items:center;gap:0;flex-wrap:wrap;margin:14px 0}
+.flow-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap}
+.flow-arr{color:var(--green);font-size:18px;padding:0 6px}
+
+/* ── INLINE CODE ── */
+code{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--orange)}
+
+/* ── COMPARISON ── */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+.vs-col{border-radius:10px;padding:18px}
+.vs-col.left{background:var(--blue-dim);border:1px solid rgba(88,166,255,.25)}
+.vs-col.right{background:var(--green-dim);border:1px solid rgba(63,185,80,.25)}
+.vs-col h4{font-size:13px;font-weight:700;margin-bottom:10px}
+.vs-col.left h4{color:var(--blue)}
+.vs-col.right h4{color:var(--green)}
+.vs-col ul{padding-left:16px}
+.vs-col li{font-size:13px;color:var(--dim);margin-bottom:5px}
+@media(max-width:600px){.vs{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="badge">Web Application Programming</div>
+  <h1>Chapter 3: <em>Server-Side Django</em></h1>
+  <p>Complete study guide — every topic explained in simple language with diagrams, analogies, and real code.</p>
+  <div class="stats">
+    <div><div class="stat-num">19</div><div class="stat-lbl">Sections</div></div>
+    <div><div class="stat-num">100+</div><div class="stat-lbl">Code Examples</div></div>
+    <div><div class="stat-num">15</div><div class="stat-lbl">Diagrams</div></div>
+    <div><div class="stat-num">∞</div><div class="stat-lbl">Exam Ready</div></div>
+  </div>
+</div>
+
+<!-- STICKY NAV -->
+<nav class="topnav">
+  <div class="nav-inner">
+    <button class="nbtn on" onclick="show('mvc')">3.1 MVC/MTV</button>
+    <button class="nbtn" onclick="show('backend')">3.2 Backend Role</button>
+    <button class="nbtn" onclick="show('setup')">3.3 Django Setup</button>
+    <button class="nbtn" onclick="show('urls')">3.4 URLs & Views</button>
+    <button class="nbtn" onclick="show('templates')">3.5 Templates</button>
+    <button class="nbtn" onclick="show('models')">3.6 Models & ORM</button>
+    <button class="nbtn" onclick="show('admin')">3.7 Admin</button>
+    <button class="nbtn" onclick="show('forms')">3.8 Forms</button>
+    <button class="nbtn" onclick="show('sessions')">3.9 Sessions & Cookies</button>
+    <button class="nbtn" onclick="show('auth')">3.10 Authentication</button>
+    <button class="nbtn" onclick="show('middleware')">3.12 Middleware</button>
+    <button class="nbtn" onclick="show('frameworks')">3.13 Frameworks</button>
+    <button class="nbtn" onclick="show('databases')">3.14 Databases</button>
+    <button class="nbtn" onclick="show('crud')">3.15 CRUD App</button>
+    <button class="nbtn" onclick="show('testing')">3.16–18 Testing</button>
+    <button class="nbtn" onclick="show('security')">3.19 Security</button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION 1: MVC / MTV -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec on" id="sec-mvc">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#122a1a">🏗️</div>
+    <div class="sec-title">
+      <h2>3.1 — MVC Architecture & Django's MTV</h2>
+      <p>The blueprint every web framework follows</p>
+    </div>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-label">🍕 Real-World Analogy</div>
+    <p>Think of a restaurant. The <b>Menu</b> (Model) lists all available dishes and their recipes. The <b>Waiter</b> (Controller/View) takes your order, talks to the kitchen, and brings your food. The <b>Plate Presentation</b> (View/Template) is how your food looks when it arrives. Each role is separate — the menu doesn't care how food is plated, the waiter doesn't cook.</p>
+  </div>
+
+  <h3>What is MVC?</h3>
+  <p style="color:var(--dim);margin-bottom:16px">MVC separates an application into 3 parts so that changes in one part don't break the others. It's the foundation of almost every web framework.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 780 260" xmlns="http://www.w3.org/2000/svg" style="max-width:780px;width:100%">
+      <!-- User -->
+      <rect x="20" y="100" width="100" height="60" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+      <text x="70" y="128" text-anchor="middle" fill="#e6edf3" font-family="Sora,sans-serif" font-size="13" font-weight="700">👤 User</text>
+      <text x="70" y="147" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">Browser</text>
+
+      <!-- Arrow user→controller -->
+      <line x1="120" y1="130" x2="195" y2="130" stroke="#58a6ff" stroke-width="2" marker-end="url(#arr)"/>
+      <text x="158" y="122" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">Request</text>
+
+      <!-- Controller -->
+      <rect x="195" y="85" width="130" height="90" rx="10" fill="#112030" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="260" y="118" text-anchor="middle" fill="#58a6ff" font-family="Sora,sans-serif" font-size="13" font-weight="700">🎮 Controller</text>
+      <text x="260" y="138" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">Django: View</text>
+      <text x="260" y="154" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">Handles logic</text>
+
+      <!-- Controller→Model -->
+      <line x1="325" y1="115" x2="405" y2="115" stroke="#3fb950" stroke-width="2" marker-end="url(#arr2)"/>
+      <text x="365" y="108" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">Fetch data</text>
+      <line x1="405" y1="140" x2="325" y2="140" stroke="#3fb950" stroke-width="2" marker-end="url(#arr2)"/>
+      <text x="365" y="158" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">Return data</text>
+
+      <!-- Model -->
+      <rect x="405" y="85" width="120" height="90" rx="10" fill="#122a1a" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="465" y="118" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="13" font-weight="700">📦 Model</text>
+      <text x="465" y="138" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">Data &amp; Logic</text>
+      <text x="465" y="154" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">Database</text>
+
+      <!-- Controller→View -->
+      <line x1="260" y1="175" x2="260" y2="205" stroke="#bc8cff" stroke-width="2"/>
+      <line x1="260" y1="205" x2="600" y2="205" stroke="#bc8cff" stroke-width="2"/>
+      <line x1="600" y1="205" x2="600" y2="175" stroke="#bc8cff" stroke-width="2" marker-end="url(#arr3)"/>
+      <text x="430" y="220" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">Pass context data</text>
+
+      <!-- View/Template -->
+      <rect x="535" y="85" width="130" height="90" rx="10" fill="#1e1030" stroke="#bc8cff" stroke-width="1.5"/>
+      <text x="600" y="118" text-anchor="middle" fill="#bc8cff" font-family="Sora,sans-serif" font-size="13" font-weight="700">🖼️ View</text>
+      <text x="600" y="138" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">Django: Template</text>
+      <text x="600" y="154" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">HTML output</text>
+
+      <!-- View→User -->
+      <line x1="665" y1="130" x2="720" y2="130" stroke="#3fb950" stroke-width="2"/>
+      <line x1="720" y1="130" x2="720" y2="50" stroke="#3fb950" stroke-width="2"/>
+      <line x1="720" y1="50" x2="70" y2="50" stroke="#3fb950" stroke-width="2"/>
+      <line x1="70" y1="50" x2="70" y2="100" stroke="#3fb950" stroke-width="2" marker-end="url(#arr2)"/>
+      <text x="395" y="42" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">HTML Response sent back</text>
+
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#58a6ff"/></marker>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3fb950"/></marker>
+        <marker id="arr3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#bc8cff"/></marker>
+      </defs>
+    </svg>
+    <p style="font-size:12px;color:var(--dim);margin-top:10px">The MVC Request-Response Cycle</p>
+  </div>
+
+  <h3>Django's MTV — Same Idea, Different Names</h3>
+  <p style="color:var(--dim);margin-bottom:14px">Django uses MTV but it means the same thing as MVC. Django just renamed "Controller" to "View" and "View" to "Template" — confusing at first, but the concept is identical.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>MVC Name</th><th>Django MTV Name</th><th>What It Does</th><th>Example File</th></tr>
+      <tr><td><span class="tag b">Model</span></td><td><span class="tag g">Model</span></td><td>Defines database structure, handles data</td><td><code>models.py</code></td></tr>
+      <tr><td><span class="tag p">View</span></td><td><span class="tag o">Template</span></td><td>Renders HTML — what the user sees</td><td><code>challenge.html</code></td></tr>
+      <tr><td><span class="tag o">Controller</span></td><td><span class="tag b">View</span></td><td>Business logic — receives request, calls model, picks template</td><td><code>views.py</code></td></tr>
+    </table>
+  </div>
+
+  <div class="warn">⚠️ <strong>Common Exam Trick:</strong> Django's "View" = MVC's "Controller". Django's "Template" = MVC's "View". Don't mix them up!</div>
+
+  <h3>Benefits of MVC / MTV</h3>
+  <div class="grid3">
+    <div class="hcard green"><h4>🔀 Separation of Concerns</h4><p>Each part does one job only. Clean, organized code.</p></div>
+    <div class="hcard blue"><h4>🧪 Testability</h4><p>Test each component independently without the others.</p></div>
+    <div class="hcard orange"><h4>👥 Parallel Work</h4><p>Frontend and backend developers work simultaneously.</p></div>
+    <div class="hcard purple"><h4>♻️ Reusability</h4><p>Models and templates can be reused across the app.</p></div>
+    <div class="hcard yellow"><h4>🔧 Maintainability</h4><p>Changes in one part don't break the others.</p></div>
+    <div class="hcard green"><h4>📈 Scalability</h4><p>Individual components can scale independently.</p></div>
+  </div>
+
+  <h3>The Full Request-Response Steps</h3>
+  <div class="card">
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><h4>User Action</h4><p>User clicks a link or submits a form in their browser.</p></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><h4>HTTP Request Sent</h4><p>Browser sends a GET or POST request to the server URL.</p></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><h4>URL Routing</h4><p>Django's <code>urls.py</code> matches the URL to the right View function.</p></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><h4>View Processes</h4><p>View receives the request, validates input, calls the Model.</p></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Model Queries DB</h4><p>Model fetches or saves data from the database.</p></div></div>
+      <div class="step"><div class="step-num">6</div><div class="step-body"><h4>Template Renders</h4><p>View sends data to Template which generates HTML.</p></div></div>
+      <div class="step"><div class="step-num">7</div><div class="step-body"><h4>Response Returned</h4><p>HTML is sent back to the browser, user sees the page.</p></div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: BACKEND ROLE -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-backend">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#112030">⚙️</div>
+    <div class="sec-title"><h2>3.2 — Role of the Backend</h2><p>What happens on the server that users never see</p></div>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-label">🏦 Analogy</div>
+    <p>A bank's front desk (frontend) looks nice and takes your requests. But the vaults, computers, and security systems (backend) are what actually do the work — checking your balance, processing transactions, verifying identity. Users only see the front desk, but the backend is where everything happens.</p>
+  </div>
+
+  <div class="vs">
+    <div class="vs-col left"><h4>🖥️ Frontend (Client Side)</h4>
+      <ul>
+        <li>Runs in the user's browser</li>
+        <li>HTML, CSS, JavaScript</li>
+        <li>Visible to the user</li>
+        <li>Buttons, forms, layouts</li>
+        <li>Can be inspected/viewed</li>
+      </ul>
+    </div>
+    <div class="vs-col right"><h4>🔧 Backend (Server Side)</h4>
+      <ul>
+        <li>Runs on the web server</li>
+        <li>Python, Java, PHP, etc.</li>
+        <li>Hidden from the user</li>
+        <li>Databases, APIs, logic</li>
+        <li>Cannot be seen directly</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Core Backend Responsibilities</h3>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">🚦 Routing</div>
+      <p>Maps URLs to handler code. When <code>/products/123</code> is requested, routing decides which Python function handles it.</p>
+      <div class="cblock" style="margin-top:12px">
+        <div class="chead"><div class="clang">URL Examples</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+        <pre><code>/home           → homepage view
+/products       → product list
+/products/123   → product #123
+/api/users      → returns JSON</code></pre>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🧠 Business Logic</div>
+      <p>The rules of your application: calculating discounts, checking permissions, validating data, processing transactions.</p>
+      <div class="hcard orange" style="margin-top:12px"><p>Examples: "Only admins can delete", "Discount applies if cart > Rs 1000", "Password must be 8+ chars"</p></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔐 Security Layers</div>
+      <ul>
+        <li><b>Authentication</b> — Who are you? (Login)</li>
+        <li><b>Authorization</b> — What can you do? (Permissions)</li>
+        <li><b>Input Validation</b> — Prevent SQL injection, XSS</li>
+        <li><b>CSRF Protection</b> — Prevent fake form submissions</li>
+        <li><b>Rate Limiting</b> — Prevent brute-force attacks</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">🗄️ Database Management</div>
+      <p>Reading and writing data permanently. The backend talks to the database, the frontend never does directly (that would be a huge security risk).</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: DJANGO SETUP -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-setup">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#122a1a">🐍</div>
+    <div class="sec-title"><h2>3.3 — Introduction to Django</h2><p>Setup, project structure, apps</p></div>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-label">🔋 "Batteries Included" Analogy</div>
+    <p>Django is like buying a fully equipped camping kit — tent, sleeping bag, stove, first aid — all included. Flask is like buying just a backpack and adding each item yourself. Django gives you authentication, admin panel, ORM, forms, templates — ready to use from day one.</p>
+  </div>
+
+  <h3>4 Core Principles of Django</h3>
+  <div class="grid2">
+    <div class="hcard green"><h4>🔋 Batteries Included</h4><p>Auth, admin, ORM, forms, templates all built in. No need to install dozens of separate packages.</p></div>
+    <div class="hcard blue"><h4>🔁 DRY (Don't Repeat Yourself)</h4><p>Write code once, reuse everywhere. Django encourages reusable components.</p></div>
+    <div class="hcard orange"><h4>⚡ Rapid Development</h4><p>Django's conventions reduce boilerplate. You focus on your app's unique logic.</p></div>
+    <div class="hcard purple"><h4>🔐 Security First</h4><p>Built-in protection: SQL injection, XSS, CSRF, clickjacking — all handled automatically.</p></div>
+  </div>
+
+  <h3>Step-by-Step Project Setup</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">Terminal / Shell</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="cm"># Step 1: Create project folder</span>
+mkdir my_project
+cd my_project
+
+<span class="cm"># Step 2: Create virtual environment (isolates dependencies)</span>
+python -m venv venv
+
+<span class="cm"># Step 3: Activate it</span>
+venv\Scripts\activate          <span class="cm"># Windows</span>
+source venv/bin/activate       <span class="cm"># macOS/Linux</span>
+
+<span class="cm"># Step 4: Install Django</span>
+pip install django
+
+<span class="cm"># Step 5: Create Django project (the . means "in current folder")</span>
+django-admin startproject my_project .
+
+<span class="cm"># Step 6: Create an app</span>
+python manage.py startapp my_app
+
+<span class="cm"># Step 7: Run the server</span>
+python manage.py runserver</code></pre>
+  </div>
+
+  <div class="tip">💡 <strong>Why virtual environment?</strong> Imagine you have two projects — one needs Django 3, one needs Django 5. Without a virtual environment, they'd conflict. venv isolates each project's packages from the rest of the system.</div>
+
+  <h3>Project File Structure</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 700 420" xmlns="http://www.w3.org/2000/svg" style="max-width:700px;width:100%">
+      <!-- Project root -->
+      <rect x="10" y="10" width="680" height="400" rx="12" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+      <rect x="10" y="10" width="680" height="40" rx="12" fill="#21262d" stroke="#30363d" stroke-width="1.5"/>
+      <text x="30" y="36" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">📁 my_project/   (Project Root)</text>
+
+      <!-- manage.py -->
+      <text x="50" y="75" fill="#f0883e" font-family="JetBrains Mono,monospace" font-size="12">📄 manage.py</text>
+      <text x="230" y="75" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">← Run commands: runserver, migrate, shell</text>
+
+      <!-- venv -->
+      <text x="50" y="100" fill="#7d8590" font-family="JetBrains Mono,monospace" font-size="12">📁 venv/</text>
+      <text x="230" y="100" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">← Virtual environment (don't edit)</text>
+
+      <!-- Config package -->
+      <rect x="50" y="115" width="620" height="130" rx="8" fill="#0d1117" stroke="#21262d" stroke-width="1"/>
+      <text x="70" y="138" fill="#58a6ff" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">📁 my_project/   (Config Package)</text>
+      <text x="100" y="162" fill="#bc8cff" font-family="JetBrains Mono,monospace" font-size="11">📄 settings.py</text>
+      <text x="280" y="162" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">← All configuration (DB, apps, templates...)</text>
+      <text x="100" y="182" fill="#bc8cff" font-family="JetBrains Mono,monospace" font-size="11">📄 urls.py</text>
+      <text x="280" y="182" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">← Root URL routing</text>
+      <text x="100" y="202" fill="#bc8cff" font-family="JetBrains Mono,monospace" font-size="11">📄 wsgi.py / asgi.py</text>
+      <text x="280" y="202" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">← Deployment config</text>
+      <text x="100" y="222" fill="#bc8cff" font-family="JetBrains Mono,monospace" font-size="11">📄 __init__.py</text>
+      <text x="280" y="222" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">← Makes it a Python package</text>
+
+      <!-- App package -->
+      <rect x="50" y="258" width="620" height="140" rx="8" fill="#0d1117" stroke="#21262d" stroke-width="1"/>
+      <text x="70" y="280" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">📁 my_app/   (Your App)</text>
+      <text x="100" y="303" fill="#e3b341" font-family="JetBrains Mono,monospace" font-size="11">📄 models.py</text>
+      <text x="280" y="303" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">← Database tables (Python classes)</text>
+      <text x="100" y="323" fill="#e3b341" font-family="JetBrains Mono,monospace" font-size="11">📄 views.py</text>
+      <text x="280" y="323" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">← Request handlers (Controller logic)</text>
+      <text x="100" y="343" fill="#e3b341" font-family="JetBrains Mono,monospace" font-size="11">📄 urls.py</text>
+      <text x="280" y="343" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">← App-level URL patterns</text>
+      <text x="100" y="363" fill="#e3b341" font-family="JetBrains Mono,monospace" font-size="11">📄 admin.py / forms.py / tests.py</text>
+      <text x="380" y="363" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">← Admin, forms, unit tests</text>
+      <text x="100" y="383" fill="#e3b341" font-family="JetBrains Mono,monospace" font-size="11">📁 migrations/</text>
+      <text x="280" y="383" fill="#7d8590" font-family="Sora,sans-serif" font-size="11">← DB schema version history</text>
+    </svg>
+  </div>
+
+  <h3>Key manage.py Commands</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Command</th><th>What It Does</th></tr>
+      <tr><td><code>python manage.py runserver</code></td><td>Start development server at localhost:8000</td></tr>
+      <tr><td><code>python manage.py makemigrations</code></td><td>Generate migration files from model changes</td></tr>
+      <tr><td><code>python manage.py migrate</code></td><td>Apply migrations — actually create/alter DB tables</td></tr>
+      <tr><td><code>python manage.py createsuperuser</code></td><td>Create admin user for the /admin panel</td></tr>
+      <tr><td><code>python manage.py shell</code></td><td>Open interactive Python shell with Django loaded</td></tr>
+      <tr><td><code>python manage.py startapp name</code></td><td>Create a new app inside the project</td></tr>
+    </table>
+  </div>
+
+  <div class="tip">💡 <strong>Project vs App:</strong> A <b>Project</b> is the entire website (e.g., Instagram). An <b>App</b> is one feature inside it (e.g., photos, stories, DMs). One project can contain many apps. An app can be reused in multiple projects.</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: URLS & VIEWS -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-urls">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#112030">🔗</div>
+    <div class="sec-title"><h2>3.4 — URLs and Views</h2><p>Routing requests to the right Python function</p></div>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-label">📬 Analogy</div>
+    <p>URLs are like a building's room numbers. When a visitor says "I want Room 302", the building's directory (urls.py) looks up Room 302 and directs them there. The View is what happens inside that room — who talks to the visitor and what they give them back.</p>
+  </div>
+
+  <h3>How URL Routing Works</h3>
+  <div class="flow" style="flex-direction:column;gap:10px;align-items:flex-start">
+    <div style="display:flex;align-items:center;gap:10px"><div class="flow-box" style="background:var(--blue-dim);border-color:#58a6ff;color:#58a6ff">User visits /challenges/january/</div></div>
+    <div style="padding-left:20px;color:var(--dim)">↓ Django reads urls.py top-to-bottom</div>
+    <div style="display:flex;align-items:center;gap:10px"><div class="flow-box">First pattern: path('admin/') → No match</div></div>
+    <div style="display:flex;align-items:center;gap:10px"><div class="flow-box" style="background:var(--green-dim);border-color:var(--green);color:var(--green)">Second: path('challenges/') → Match! Include challenges/urls.py</div></div>
+    <div style="padding-left:20px;color:var(--dim)">↓ Now check challenges/urls.py</div>
+    <div style="display:flex;align-items:center;gap:10px"><div class="flow-box" style="background:var(--orange-dim);border-color:var(--orange);color:var(--orange)">path('&lt;str:month&gt;/') → Match! Call monthly_challenge(request, "january")</div></div>
+    <div style="padding-left:20px;color:var(--dim)">↓ View returns HttpResponse</div>
+  </div>
+
+  <h3>Project URLs (Root)</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">challenges_project/urls.py</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">from</span> django.contrib <span class="kw">import</span> admin
+<span class="kw">from</span> django.urls <span class="kw">import</span> path, include
+
+urlpatterns = [
+    path(<span class="str">'admin/'</span>, admin.site.urls),
+    <span class="cm"># Include app-level URLs — all /challenges/... routes go here</span>
+    path(<span class="str">'challenges/'</span>, include(<span class="str">'challenges.urls'</span>)),
+]</code></pre>
+  </div>
+
+  <h3>App URLs + Dynamic Segments</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">challenges/urls.py</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">from</span> django.urls <span class="kw">import</span> path
+<span class="kw">from</span> . <span class="kw">import</span> views
+
+urlpatterns = [
+    path(<span class="str">''</span>, views.index, name=<span class="str">'index'</span>),                         <span class="cm"># /challenges/</span>
+    path(<span class="str">'january/'</span>, views.january, name=<span class="str">'january'</span>),             <span class="cm"># Static</span>
+    path(<span class="str">'&lt;str:month&gt;/'</span>, views.monthly_challenge, name=<span class="str">'monthly-challenge'</span>), <span class="cm"># Dynamic!</span>
+    path(<span class="str">'&lt;int:month&gt;/'</span>, views.challenge_by_number),              <span class="cm"># Int only</span>
+]</code></pre>
+  </div>
+
+  <h3>Path Converters</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Converter</th><th>Matches</th><th>Example URL</th><th>Passed as</th></tr>
+      <tr><td><code>&lt;str:name&gt;</code></td><td>Any non-empty string</td><td>/challenges/january/</td><td>String "january"</td></tr>
+      <tr><td><code>&lt;int:id&gt;</code></td><td>Positive integers only</td><td>/books/42/</td><td>Integer 42</td></tr>
+      <tr><td><code>&lt;slug:title&gt;</code></td><td>Letters, numbers, hyphens</td><td>/posts/my-post-123/</td><td>String "my-post-123"</td></tr>
+      <tr><td><code>&lt;uuid:pk&gt;</code></td><td>UUID format</td><td>/item/abc-123.../</td><td>UUID object</td></tr>
+      <tr><td><code>&lt;path:filepath&gt;</code></td><td>Any string incl. slashes</td><td>/files/a/b/c.txt</td><td>String "a/b/c.txt"</td></tr>
+    </table>
+  </div>
+
+  <h3>Writing View Functions</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">challenges/views.py</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">from</span> django.http <span class="kw">import</span> HttpResponse, HttpResponseNotFound
+<span class="kw">from</span> django.shortcuts <span class="kw">import</span> redirect
+<span class="kw">from</span> django.urls <span class="kw">import</span> reverse
+
+monthly_challenges = {
+    <span class="str">'january'</span>: <span class="str">'Exercise daily for 30 minutes'</span>,
+    <span class="str">'february'</span>: <span class="str">'Read one book'</span>,
+    <span class="cm"># ... etc</span>
+    <span class="str">'december'</span>: <span class="kw">None</span>,  <span class="cm"># No challenge defined</span>
+}
+
+<span class="kw">def</span> <span class="fn">monthly_challenge</span>(request, month):
+    <span class="kw">try</span>:
+        challenge = monthly_challenges[month.lower()]
+        <span class="kw">return</span> HttpResponse(challenge)
+    <span class="kw">except</span> KeyError:
+        <span class="kw">return</span> HttpResponseNotFound(<span class="str">"Month not supported!"</span>)
+
+<span class="kw">def</span> <span class="fn">challenge_by_number</span>(request, month):
+    <span class="cm"># redirect from /challenges/1/ to /challenges/january/</span>
+    months = list(monthly_challenges.keys())
+    <span class="kw">if</span> month > len(months):
+        <span class="kw">return</span> HttpResponseNotFound(<span class="str">"Invalid"</span>)
+    redirect_url = reverse(<span class="str">'monthly-challenge'</span>, args=[months[month-<span class="num">1</span>]])
+    <span class="kw">return</span> redirect(redirect_url)  <span class="cm"># Use reverse() — not hardcoded strings!</span></code></pre>
+  </div>
+
+  <div class="tip">💡 <strong>Always use <code>reverse()</code></strong> instead of hardcoding URLs like <code>'/challenges/january/'</code>. If you later change the URL pattern, <code>reverse()</code> still works. Hardcoded strings break.</div>
+
+  <h3>The Request Object — What Every View Gets</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Attribute</th><th>Contains</th><th>Example</th></tr>
+      <tr><td><code>request.method</code></td><td>HTTP method used</td><td>"GET" or "POST"</td></tr>
+      <tr><td><code>request.GET</code></td><td>Query string params</td><td><code>request.GET.get('q')</code> from <code>?q=python</code></td></tr>
+      <tr><td><code>request.POST</code></td><td>Form submission data</td><td><code>request.POST.get('username')</code></td></tr>
+      <tr><td><code>request.user</code></td><td>Logged in user</td><td><code>request.user.username</code></td></tr>
+      <tr><td><code>request.session</code></td><td>Session data dict</td><td><code>request.session['cart']</code></td></tr>
+      <tr><td><code>request.headers</code></td><td>HTTP headers</td><td><code>request.headers['Content-Type']</code></td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: TEMPLATES -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-templates">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#1e1030">🖼️</div>
+    <div class="sec-title"><h2>3.5 — Templates & Static Files</h2><p>Django Template Language (DTL), inheritance, static files</p></div>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-label">📝 Analogy</div>
+    <p>A template is like a document form with blank fields. "Dear <b>__name__</b>, your order <b>__id__</b> has shipped." The Django view fills in the blanks with real data and sends the completed document to the user.</p>
+  </div>
+
+  <h3>Django Template Language (DTL)</h3>
+  <div class="grid3">
+    <div class="hcard blue"><h4>{{ variable }}</h4><p>Outputs a variable's value. <code>{{ user.name }}</code> → prints the name.</p></div>
+    <div class="hcard green"><h4>{% tag %}</h4><p>Control flow. <code>{% for %}</code>, <code>{% if %}</code>, <code>{% url %}</code>, etc.</p></div>
+    <div class="hcard orange"><h4>{{ var|filter }}</h4><p>Transform values. <code>{{ name|upper }}</code> → JOHN. <code>{{ text|truncatewords:20 }}</code></p></div>
+  </div>
+
+  <h3>Passing Data from View to Template</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">views.py</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">from</span> django.shortcuts <span class="kw">import</span> render
+
+<span class="kw">def</span> <span class="fn">monthly_challenge</span>(request, month):
+    challenge_text = monthly_challenges[month]
+    <span class="kw">return</span> render(request, <span class="str">'challenges/challenge.html'</span>, {
+        <span class="str">'text'</span>: challenge_text,         <span class="cm"># Template gets {{ text }}</span>
+        <span class="str">'month_name'</span>: month.capitalize() <span class="cm"># Template gets {{ month_name }}</span>
+    })</code></pre>
+  </div>
+  <div class="cblock">
+    <div class="chead"><div class="clang">challenges/challenge.html</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="cm">&lt;!-- Variable output --&gt;</span>
+&lt;<span class="cls">h1</span>&gt;{{ month_name<span class="kw">|title</span> }} Challenge&lt;/<span class="cls">h1</span>&gt;
+
+<span class="cm">&lt;!-- Conditional tag --&gt;</span>
+{% <span class="kw">if</span> text <span class="kw">is not</span> None %}
+    &lt;<span class="cls">p</span>&gt;{{ text }}&lt;/<span class="cls">p</span>&gt;
+{% <span class="kw">else</span> %}
+    &lt;<span class="cls">p</span>&gt;No challenge this month!&lt;/<span class="cls">p</span>&gt;
+{% <span class="kw">endif</span> %}</code></pre>
+  </div>
+
+  <h3>Common Template Filters</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Filter</th><th>Result</th><th>Example</th></tr>
+      <tr><td><code>|upper</code></td><td>ALL CAPS</td><td><code>{{ "hello"|upper }}</code> → HELLO</td></tr>
+      <tr><td><code>|lower</code></td><td>all lowercase</td><td><code>{{ "HELLO"|lower }}</code> → hello</td></tr>
+      <tr><td><code>|title</code></td><td>Title Case</td><td><code>{{ "hello world"|title }}</code> → Hello World</td></tr>
+      <tr><td><code>|truncatewords:N</code></td><td>First N words...</td><td><code>{{ bio|truncatewords:10 }}</code></td></tr>
+      <tr><td><code>|default:"N/A"</code></td><td>Fallback if empty</td><td><code>{{ nickname|default:"Unknown" }}</code></td></tr>
+      <tr><td><code>|length</code></td><td>Count items</td><td><code>{{ items|length }}</code> → 5</td></tr>
+      <tr><td><code>|safe</code></td><td>Render raw HTML (⚠️ use carefully)</td><td><code>{{ html_content|safe }}</code></td></tr>
+      <tr><td><code>|date:"Y-m-d"</code></td><td>Format dates</td><td><code>{{ created_at|date:"d/m/Y" }}</code></td></tr>
+    </table>
+  </div>
+
+  <h3>Template Tags: for, if, url</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">index.html — for loop + url tag</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code>&lt;<span class="cls">ul</span>&gt;
+{% <span class="kw">for</span> month <span class="kw">in</span> months %}
+    &lt;<span class="cls">li</span>&gt;
+        <span class="cm">&lt;!-- {% url %} generates URL from name — don't hardcode! --&gt;</span>
+        &lt;<span class="cls">a</span> href="{% <span class="kw">url</span> 'monthly-challenge' month %}"&gt;
+            {{ forloop.counter }} - {{ month<span class="kw">|title</span> }}
+        &lt;/<span class="cls">a</span>&gt;
+    &lt;/<span class="cls">li</span>&gt;
+{% <span class="kw">endfor</span> %}
+&lt;/<span class="cls">ul</span>&gt;</code></pre>
+  </div>
+
+  <h3>Template Inheritance — The Most Important Feature</h3>
+  <div class="analogy">
+    <div class="analogy-label">🏠 Analogy</div>
+    <p>Template inheritance is like building a house. The base template is the foundation and outer walls — shared by every room. Each child template fills in the rooms (blocks) with different content. You build the structure once and customize each page.</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg" style="max-width:700px;width:100%">
+      <!-- Base template -->
+      <rect x="220" y="10" width="260" height="120" rx="10" fill="#1e1030" stroke="#bc8cff" stroke-width="1.5"/>
+      <text x="350" y="35" text-anchor="middle" fill="#bc8cff" font-family="Sora,sans-serif" font-size="13" font-weight="700">base.html</text>
+      <rect x="240" y="45" width="220" height="25" rx="5" fill="#112030" stroke="#58a6ff" stroke-width="1"/>
+      <text x="350" y="62" text-anchor="middle" fill="#58a6ff" font-family="Sora,sans-serif" font-size="11">{% block page_title %}...{% endblock %}</text>
+      <rect x="240" y="78" width="220" height="25" rx="5" fill="#112030" stroke="#58a6ff" stroke-width="1"/>
+      <text x="350" y="95" text-anchor="middle" fill="#58a6ff" font-family="Sora,sans-serif" font-size="11">{% block content %}...{% endblock %}</text>
+      <rect x="240" y="111" width="220" height="14" rx="4" fill="#21262d"/>
+      <text x="350" y="122" text-anchor="middle" fill="#484f58" font-family="Sora,sans-serif" font-size="10">nav, footer, scripts — shared everywhere</text>
+
+      <!-- Arrows down -->
+      <line x1="280" y1="130" x2="150" y2="195" stroke="#bc8cff" stroke-width="1.5" stroke-dasharray="4"/>
+      <line x1="350" y1="130" x2="350" y2="195" stroke="#bc8cff" stroke-width="1.5" stroke-dasharray="4"/>
+      <line x1="420" y1="130" x2="550" y2="195" stroke="#bc8cff" stroke-width="1.5" stroke-dasharray="4"/>
+
+      <!-- Child 1 -->
+      <rect x="60" y="195" width="180" height="90" rx="10" fill="#122a1a" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="150" y="217" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="12" font-weight="700">index.html</text>
+      <text x="150" y="237" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">{% extends "base.html" %}</text>
+      <text x="150" y="253" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">{% block content %}</text>
+      <text x="150" y="269" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">   List of challenges</text>
+      <text x="150" y="278" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">{% endblock %}</text>
+
+      <!-- Child 2 -->
+      <rect x="265" y="195" width="170" height="90" rx="10" fill="#122a1a" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="350" y="217" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="12" font-weight="700">challenge.html</text>
+      <text x="350" y="237" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">{% extends "base.html" %}</text>
+      <text x="350" y="253" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">{% block content %}</text>
+      <text x="350" y="269" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">   Monthly challenge</text>
+      <text x="350" y="278" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">{% endblock %}</text>
+
+      <!-- Child 3 -->
+      <rect x="460" y="195" width="180" height="90" rx="10" fill="#122a1a" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="550" y="217" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="12" font-weight="700">404.html</text>
+      <text x="550" y="237" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">{% extends "base.html" %}</text>
+      <text x="550" y="253" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">{% block content %}</text>
+      <text x="550" y="269" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">   Page not found!</text>
+      <text x="550" y="278" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">{% endblock %}</text>
+    </svg>
+    <p style="font-size:12px;color:var(--dim);margin-top:8px">base.html provides the outer shell; child templates fill in the blocks</p>
+  </div>
+
+  <div class="cblock">
+    <div class="chead"><div class="clang">templates/base.html — The Parent</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code>{% <span class="kw">load static</span> %}
+&lt;!DOCTYPE html&gt;
+&lt;<span class="cls">html</span>&gt;
+&lt;<span class="cls">head</span>&gt;
+    &lt;<span class="cls">title</span>&gt;{% <span class="kw">block</span> page_title %}My Site{% <span class="kw">endblock</span> %}&lt;/<span class="cls">title</span>&gt;
+    &lt;<span class="cls">link</span> rel="stylesheet" href="{% <span class="kw">static</span> 'styles.css' %}"&gt;
+&lt;/<span class="cls">head</span>&gt;
+&lt;<span class="cls">body</span>&gt;
+    &lt;<span class="cls">nav</span>&gt;...navigation...&lt;/<span class="cls">nav</span>&gt;
+    {% <span class="kw">block</span> content %}{% <span class="kw">endblock</span> %}  <span class="cm">&lt;!-- Child fills this --&gt;</span>
+    &lt;<span class="cls">footer</span>&gt;...footer...&lt;/<span class="cls">footer</span>&gt;
+&lt;/<span class="cls">body</span>&gt;
+&lt;/<span class="cls">html</span>&gt;</code></pre>
+  </div>
+
+  <div class="cblock">
+    <div class="chead"><div class="clang">challenges/index.html — The Child</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code>{% <span class="kw">extends</span> <span class="str">"base.html"</span> %}   <span class="cm">&lt;!-- MUST be first line --&gt;</span>
+
+{% <span class="kw">block</span> page_title %}All Challenges{% <span class="kw">endblock</span> %}
+
+{% <span class="kw">block</span> content %}
+    &lt;<span class="cls">h1</span>&gt;All Monthly Challenges&lt;/<span class="cls">h1</span>&gt;
+    &lt;<span class="cls">ul</span>&gt;
+        {% <span class="kw">for</span> month <span class="kw">in</span> months %}
+            &lt;<span class="cls">li</span>&gt;&lt;<span class="cls">a</span> href="{% <span class="kw">url</span> 'monthly-challenge' month %}"&gt;{{ month<span class="kw">|title</span> }}&lt;/<span class="cls">a</span>&gt;&lt;/<span class="cls">li</span>&gt;
+        {% <span class="kw">endfor</span> %}
+    &lt;/<span class="cls">ul</span>&gt;
+{% <span class="kw">endblock</span> %}</code></pre>
+  </div>
+
+  <h3>Static Files (CSS, JS, Images)</h3>
+  <div class="card">
+    <div class="card-title">📁 Directory Structure</div>
+    <div class="cblock">
+      <div class="chead"><div class="clang">App-level Static Files</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+      <pre><code>my_app/
+└── static/
+    └── my_app/            <span class="cm"># ← nested folder prevents name clashes!</span>
+        ├── css/
+        │   └── style.css
+        └── images/
+            └── logo.png</code></pre>
+    </div>
+    <p style="margin-top:12px;font-size:14px;color:var(--dim)">In templates, load and use static files like this:</p>
+    <div class="cblock">
+      <div class="chead"><div class="clang">template.html</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+      <pre><code>{% <span class="kw">load static</span> %}   <span class="cm">&lt;!-- Must load first --&gt;</span>
+&lt;<span class="cls">link</span> rel="stylesheet" href="{% <span class="kw">static</span> 'my_app/css/style.css' %}"&gt;
+&lt;<span class="cls">img</span> src="{% <span class="kw">static</span> 'my_app/images/logo.png' %}"&gt;</code></pre>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: MODELS & ORM -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-models">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#122a1a">🗄️</div>
+    <div class="sec-title"><h2>3.6 — Models & ORM</h2><p>Database tables as Python classes — no SQL needed</p></div>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-label">🧾 Analogy</div>
+    <p>ORM is like a personal assistant between you and the bank. You say "Transfer Rs 5000 to Sita" in plain English. The assistant translates it to the bank's complex internal procedure. You don't need to know bank-speak. ORM lets you talk to the database in Python — it translates to SQL automatically.</p>
+  </div>
+
+  <h3>Defining a Model = Creating a DB Table</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg" style="max-width:700px;width:100%">
+      <!-- Python class -->
+      <rect x="20" y="20" width="300" height="180" rx="10" fill="#112030" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="170" y="46" text-anchor="middle" fill="#58a6ff" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">Python Class (models.py)</text>
+      <text x="50" y="72" fill="#d2a8ff" font-family="JetBrains Mono,monospace" font-size="11">class Book(models.Model):</text>
+      <text x="70" y="94" fill="#e6edf3" font-family="JetBrains Mono,monospace" font-size="11">  title = CharField(max_length=50)</text>
+      <text x="70" y="114" fill="#e6edf3" font-family="JetBrains Mono,monospace" font-size="11">  rating = IntegerField()</text>
+      <text x="70" y="134" fill="#e6edf3" font-family="JetBrains Mono,monospace" font-size="11">  author = CharField(max_length=100)</text>
+      <text x="70" y="154" fill="#e6edf3" font-family="JetBrains Mono,monospace" font-size="11">  is_bestselling = BooleanField()</text>
+      <text x="70" y="174" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="11">  # id added automatically!</text>
+
+      <!-- Arrow -->
+      <text x="350" y="115" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="22">→</text>
+      <text x="350" y="132" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">ORM translates</text>
+      <text x="350" y="145" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">to SQL</text>
+
+      <!-- SQL table -->
+      <rect x="390" y="20" width="290" height="180" rx="10" fill="#122a1a" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="535" y="46" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">Database Table</text>
+      <text x="410" y="72" fill="#7d8590" font-family="JetBrains Mono,monospace" font-size="10">CREATE TABLE book_outlet_book (</text>
+      <text x="420" y="90" fill="#e6edf3" font-family="JetBrains Mono,monospace" font-size="10">id  INTEGER PRIMARY KEY,</text>
+      <text x="420" y="108" fill="#e6edf3" font-family="JetBrains Mono,monospace" font-size="10">title  VARCHAR(50) NOT NULL,</text>
+      <text x="420" y="126" fill="#e6edf3" font-family="JetBrains Mono,monospace" font-size="10">rating  INTEGER NOT NULL,</text>
+      <text x="420" y="144" fill="#e6edf3" font-family="JetBrains Mono,monospace" font-size="10">author  VARCHAR(100),</text>
+      <text x="420" y="162" fill="#e6edf3" font-family="JetBrains Mono,monospace" font-size="10">is_bestselling  BOOLEAN</text>
+      <text x="410" y="180" fill="#7d8590" font-family="JetBrains Mono,monospace" font-size="10">);</text>
+    </svg>
+  </div>
+
+  <h3>Common Field Types</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Field Type</th><th>Use For</th><th>Example</th></tr>
+      <tr><td><code>CharField</code></td><td>Short text (requires max_length)</td><td><code>name = CharField(max_length=100)</code></td></tr>
+      <tr><td><code>TextField</code></td><td>Long text (bio, description)</td><td><code>bio = TextField()</code></td></tr>
+      <tr><td><code>IntegerField</code></td><td>Whole numbers</td><td><code>age = IntegerField()</code></td></tr>
+      <tr><td><code>FloatField</code></td><td>Decimal numbers</td><td><code>price = FloatField()</code></td></tr>
+      <tr><td><code>BooleanField</code></td><td>True/False</td><td><code>active = BooleanField(default=True)</code></td></tr>
+      <tr><td><code>DateField</code></td><td>Date only</td><td><code>birth = DateField()</code></td></tr>
+      <tr><td><code>DateTimeField</code></td><td>Date + time</td><td><code>created_at = DateTimeField(auto_now_add=True)</code></td></tr>
+      <tr><td><code>EmailField</code></td><td>Email with validation</td><td><code>email = EmailField()</code></td></tr>
+      <tr><td><code>ForeignKey</code></td><td>Many-to-one relationship</td><td><code>author = ForeignKey(Author, on_delete=CASCADE)</code></td></tr>
+    </table>
+  </div>
+
+  <h3>Field Options</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">models.py — Field Options</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">class</span> <span class="cls">Book</span>(models.Model):
+    title = models.CharField(max_length=<span class="num">50</span>)
+    author = models.CharField(max_length=<span class="num">100</span>, null=<span class="kw">True</span>)   <span class="cm"># DB allows NULL</span>
+    bio   = models.TextField(blank=<span class="kw">True</span>)               <span class="cm"># Form allows empty</span>
+    slug  = models.SlugField(unique=<span class="kw">True</span>)               <span class="cm"># Must be unique</span>
+    rating = models.IntegerField(default=<span class="num">0</span>)              <span class="cm"># Default value</span>
+    created = models.DateTimeField(auto_now_add=<span class="kw">True</span>)    <span class="cm"># Set on creation</span>
+    updated = models.DateTimeField(auto_now=<span class="kw">True</span>)        <span class="cm"># Set on every save</span></code></pre>
+  </div>
+  <div class="warn">⚠️ <strong>null vs blank:</strong> <code>null=True</code> allows NULL in the database column. <code>blank=True</code> allows empty values in Django forms. They're different! For text fields, prefer <code>blank=True, default=""</code> over <code>null=True</code>.</div>
+
+  <h3>Migrations — Keeping DB in Sync</h3>
+  <div class="card">
+    <div class="card-title">🔄 Migration Workflow</div>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Edit models.py</h4><p>Add, remove, or change fields in your model class.</p></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><h4>makemigrations</h4><p><code>python manage.py makemigrations</code> — Django compares your models to previous migrations and creates a new migration file describing the changes.</p></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><h4>migrate</h4><p><code>python manage.py migrate</code> — Executes the migration file, actually altering the database schema.</p></div></div>
+    </div>
+  </div>
+
+  <h3>CRUD with Django ORM (in Shell)</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">python manage.py shell</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">from</span> book_outlet.models <span class="kw">import</span> Book
+
+<span class="cm">## CREATE ##</span>
+book = Book(title=<span class="str">"Harry Potter"</span>, rating=<span class="num">5</span>)
+book.save()
+<span class="cm"># OR in one step:</span>
+Book.objects.create(title=<span class="str">"Lord of the Rings"</span>, rating=<span class="num">4</span>)
+
+<span class="cm">## READ ##</span>
+Book.objects.all()           <span class="cm"># Get everything</span>
+Book.objects.get(id=<span class="num">1</span>)       <span class="cm"># Get exactly one (error if not found)</span>
+Book.objects.filter(rating=<span class="num">5</span>) <span class="cm"># Get many matching</span>
+
+<span class="cm">## UPDATE ##</span>
+b = Book.objects.get(id=<span class="num">1</span>)
+b.author = <span class="str">"J.K. Rowling"</span>
+b.save()
+
+<span class="cm">## DELETE ##</span>
+b = Book.objects.get(id=<span class="num">1</span>)
+b.delete()</code></pre>
+  </div>
+
+  <h3>Filtering & Field Lookups</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">QuerySet Lookups — Double Underscore Syntax</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="cm"># You CANNOT do: Book.objects.filter(rating < 3)  ← SyntaxError!</span>
+<span class="cm"># Use Django's __ (double underscore) lookups instead:</span>
+
+Book.objects.filter(rating__lt=<span class="num">3</span>)           <span class="cm"># rating &lt; 3</span>
+Book.objects.filter(rating__gte=<span class="num">4</span>)          <span class="cm"># rating &gt;= 4</span>
+Book.objects.filter(title__contains=<span class="str">"Harry"</span>) <span class="cm"># title contains "Harry"</span>
+Book.objects.filter(title__icontains=<span class="str">"harry"</span>)<span class="cm"># case-insensitive</span>
+Book.objects.filter(author__startswith=<span class="str">"J"</span>)  <span class="cm"># starts with J</span>
+Book.objects.filter(rating__in=[<span class="num">4</span>,<span class="num">5</span>])         <span class="cm"># rating is 4 or 5</span>
+Book.objects.filter(author__isnull=<span class="kw">True</span>)      <span class="cm"># author is NULL</span>
+
+<span class="cm"># Chaining (AND logic by default):</span>
+Book.objects.filter(is_bestselling=<span class="kw">True</span>, rating__gt=<span class="num">3</span>)
+
+<span class="cm"># OR logic — use Q objects:</span>
+<span class="kw">from</span> django.db.models <span class="kw">import</span> Q
+Book.objects.filter(Q(rating__lt=<span class="num">3</span>) | Q(is_bestselling=<span class="kw">True</span>))
+
+<span class="cm"># Order and aggregate:</span>
+Book.objects.order_by(<span class="str">'-rating'</span>)             <span class="cm"># Descending</span>
+Book.objects.aggregate(Avg(<span class="str">'rating'</span>))         <span class="cm"># Average</span></code></pre>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Lookup</th><th>Meaning</th><th>SQL Equivalent</th></tr>
+      <tr><td><code>__exact</code></td><td>Exact match</td><td><code>= 'value'</code></td></tr>
+      <tr><td><code>__lt</code> / <code>__gt</code></td><td>Less/greater than</td><td><code>&lt; value</code> / <code>&gt; value</code></td></tr>
+      <tr><td><code>__lte</code> / <code>__gte</code></td><td>Less/greater or equal</td><td><code>&lt;= value</code> / <code>&gt;= value</code></td></tr>
+      <tr><td><code>__contains</code></td><td>Substring match</td><td><code>LIKE '%value%'</code></td></tr>
+      <tr><td><code>__icontains</code></td><td>Case-insensitive contains</td><td><code>ILIKE '%value%'</code></td></tr>
+      <tr><td><code>__startswith</code></td><td>Starts with</td><td><code>LIKE 'value%'</code></td></tr>
+      <tr><td><code>__in</code></td><td>In a list</td><td><code>IN (1,2,3)</code></td></tr>
+      <tr><td><code>__isnull</code></td><td>Is NULL</td><td><code>IS NULL</code></td></tr>
+    </table>
+  </div>
+
+  <div class="tip">💡 <strong>Lazy Evaluation:</strong> QuerySets don't hit the database until you actually use them (loop over them, print them, convert to list). This lets you chain filters efficiently — only 1 DB query at the end.</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: ADMIN -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-admin">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#2d1a08">🔑</div>
+    <div class="sec-title"><h2>3.7 — Django Admin Interface</h2><p>Free CRUD UI for your models — auto-generated</p></div>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-label">🏢 Analogy</div>
+    <p>Django Admin is like the control panel of an airplane — it's not for passengers (users), it's for the pilot (admin/developer). From here you can see and control everything in your database without writing a single line of HTML.</p>
+  </div>
+
+  <div class="cblock">
+    <div class="chead"><div class="clang">Setting up Admin</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="cm"># Step 1: Create superuser</span>
+python manage.py createsuperuser
+
+<span class="cm"># Step 2: Register your model in admin.py</span></code></pre>
+  </div>
+  <div class="cblock">
+    <div class="chead"><div class="clang">book_outlet/admin.py</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">from</span> django.contrib <span class="kw">import</span> admin
+<span class="kw">from</span> .models <span class="kw">import</span> Book
+
+<span class="cm"># Basic registration:</span>
+admin.site.register(Book)
+
+<span class="cm"># OR customize it:</span>
+<span class="kw">class</span> <span class="cls">BookAdmin</span>(admin.ModelAdmin):
+    list_display  = (<span class="str">'title'</span>, <span class="str">'author'</span>, <span class="str">'rating'</span>)  <span class="cm"># Columns shown</span>
+    list_filter   = (<span class="str">'rating'</span>, <span class="str">'is_bestselling'</span>)    <span class="cm"># Sidebar filters</span>
+    search_fields = [<span class="str">'title'</span>, <span class="str">'author'</span>]              <span class="cm"># Search bar</span>
+
+admin.site.register(Book, BookAdmin)</code></pre>
+  </div>
+
+  <div class="grid2">
+    <div class="hcard green"><h4>✅ What You Get For Free</h4><ul><li>List all records</li><li>Create new records</li><li>Edit existing records</li><li>Delete records</li><li>Search and filter</li><li>Pagination</li></ul></div>
+    <div class="hcard blue"><h4>🎨 What You Can Customize</h4><ul><li><code>list_display</code> — visible columns</li><li><code>list_filter</code> — sidebar filters</li><li><code>search_fields</code> — searchable fields</li><li>Custom actions</li><li>Ordering</li></ul></div>
+  </div>
+  <div class="tip">💡 <strong>Access:</strong> Go to <code>http://127.0.0.1:8000/admin/</code> after creating a superuser. No setup beyond registering models needed!</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: FORMS -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-forms">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#2d1a08">📋</div>
+    <div class="sec-title"><h2>3.8 — Forms, CSRF, Validation</h2><p>Handling user input safely</p></div>
+  </div>
+
+  <h3>GET vs POST</h3>
+  <div class="vs">
+    <div class="vs-col left"><h4>📤 GET — Reading Data</h4>
+      <ul>
+        <li>Data visible in URL: <code>?q=python</code></li>
+        <li>Bookmarkable, shareable</li>
+        <li>For search, filters</li>
+        <li>Never for passwords!</li>
+        <li>Has length limit</li>
+      </ul>
+    </div>
+    <div class="vs-col right"><h4>📥 POST — Sending Data</h4>
+      <ul>
+        <li>Data in request body (hidden)</li>
+        <li>Not bookmarkable</li>
+        <li>For login, registration, file uploads</li>
+        <li>Required for sensitive data</li>
+        <li>No length limit</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>CSRF — What It Is and Why It Matters</h3>
+  <div class="analogy">
+    <div class="analogy-label">🎭 CSRF Attack Analogy</div>
+    <p>You log in to your bank. Without logging out, you visit a hacker's site. That site has a hidden form that silently submits "transfer Rs 50,000 to hacker" to your bank. Because your browser still has the bank cookie, the bank thinks it's YOU! This is CSRF. Django prevents it by requiring a secret token in every form.</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" style="max-width:700px;width:100%">
+      <rect x="20" y="60" width="100" height="60" rx="8" fill="#161b22" stroke="#30363d"/>
+      <text x="70" y="88" text-anchor="middle" fill="#e6edf3" font-family="Sora,sans-serif" font-size="12" font-weight="700">👤 User</text>
+      <text x="70" y="106" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">Logged In</text>
+
+      <line x1="120" y1="90" x2="200" y2="90" stroke="#58a6ff" stroke-width="2" marker-end="url(#ba)"/>
+      <text x="160" y="82" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">GET /form</text>
+
+      <rect x="200" y="40" width="140" height="110" rx="8" fill="#112030" stroke="#58a6ff"/>
+      <text x="270" y="66" text-anchor="middle" fill="#58a6ff" font-family="Sora,sans-serif" font-size="11" font-weight="700">🏦 Django App</text>
+      <text x="270" y="88" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Sends form +</text>
+      <text x="270" y="102" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="10" font-weight="700">csrftoken=abc123</text>
+      <text x="270" y="118" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">(secret hidden field)</text>
+
+      <line x1="340" y1="90" x2="420" y2="90" stroke="#3fb950" stroke-width="2" marker-end="url(#ba2)"/>
+      <text x="380" y="82" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">POST + token</text>
+
+      <rect x="420" y="60" width="120" height="60" rx="8" fill="#122a1a" stroke="#3fb950"/>
+      <text x="480" y="86" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="11" font-weight="700">✅ Valid!</text>
+      <text x="480" y="104" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Token matches → OK</text>
+
+      <rect x="420" y="140" width="120" height="50" rx="8" fill="#2d0e0e" stroke="#f85149"/>
+      <text x="480" y="162" text-anchor="middle" fill="#f85149" font-family="Sora,sans-serif" font-size="11" font-weight="700">❌ Blocked!</text>
+      <text x="480" y="178" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">No token → 403 Error</text>
+
+      <defs>
+        <marker id="ba" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#58a6ff"/></marker>
+        <marker id="ba2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3fb950"/></marker>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="cblock">
+    <div class="chead"><div class="clang">Every POST Form Needs {% csrf_token %}</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code>&lt;<span class="cls">form</span> method="POST" action="{% <span class="kw">url</span> 'contact' %}"&gt;
+    {% <span class="kw">csrf_token</span> %}  <span class="cm">&lt;!-- This renders: &lt;input type="hidden" name="csrfmiddlewaretoken" value="abc123..."&gt; --&gt;</span>
+    &lt;<span class="cls">input</span> type="text" name="username"&gt;
+    &lt;<span class="cls">button</span> type="submit"&gt;Submit&lt;/<span class="cls">button</span>&gt;
+&lt;/<span class="cls">form</span>&gt;</code></pre>
+  </div>
+
+  <h3>Django Forms API</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">forms.py — Defining the Form</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">from</span> django <span class="kw">import</span> forms
+
+<span class="kw">class</span> <span class="cls">ContactForm</span>(forms.Form):
+    name  = forms.CharField(max_length=<span class="num">100</span>)
+    email = forms.EmailField()
+    phone = forms.CharField(max_length=<span class="num">15</span>)
+    
+    <span class="cm"># Custom field-level validation</span>
+    <span class="kw">def</span> <span class="fn">clean_phone</span>(self):
+        phone = self.cleaned_data[<span class="str">'phone'</span>]
+        <span class="kw">if not</span> phone.startswith(<span class="str">'9'</span>):
+            <span class="kw">raise</span> forms.ValidationError(<span class="str">"Phone must start with 9"</span>)
+        <span class="kw">return</span> phone
+    
+    <span class="cm"># Cross-field validation</span>
+    <span class="kw">def</span> <span class="fn">clean</span>(self):
+        data = <span class="fn">super</span>().clean()
+        <span class="kw">if</span> data.get(<span class="str">'password'</span>) != data.get(<span class="str">'confirm_password'</span>):
+            <span class="kw">raise</span> forms.ValidationError(<span class="str">"Passwords don't match"</span>)
+        <span class="kw">return</span> data</code></pre>
+  </div>
+
+  <div class="cblock">
+    <div class="chead"><div class="clang">views.py — Processing the Form</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">def</span> <span class="fn">contact</span>(request):
+    <span class="kw">if</span> request.method == <span class="str">'POST'</span>:
+        form = ContactForm(request.POST)   <span class="cm"># Bind data to form</span>
+        <span class="kw">if</span> form.is_valid():                 <span class="cm"># Run all validation</span>
+            name  = form.cleaned_data[<span class="str">'name'</span>]   <span class="cm"># Safe, validated data</span>
+            email = form.cleaned_data[<span class="str">'email'</span>]
+            <span class="cm"># ... save or process ...</span>
+            <span class="kw">return</span> redirect(<span class="str">'success'</span>)
+    <span class="kw">else</span>:                              <span class="cm"># GET — show empty form</span>
+        form = ContactForm()
+    <span class="kw">return</span> render(request, <span class="str">'contact.html'</span>, {<span class="str">'form'</span>: form})</code></pre>
+  </div>
+
+  <h3>Validation Flow</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 700 100" xmlns="http://www.w3.org/2000/svg" style="max-width:700px;width:100%">
+      <rect x="10" y="30" width="140" height="40" rx="8" fill="#112030" stroke="#58a6ff"/>
+      <text x="80" y="55" text-anchor="middle" fill="#58a6ff" font-family="Sora,sans-serif" font-size="11" font-weight="700">A. Built-in</text>
+      <text x="80" y="68" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">required, max_length, email format</text>
+      <line x1="150" y1="50" x2="210" y2="50" stroke="#3fb950" stroke-width="2" marker-end="url(#fv)"/>
+      <rect x="210" y="30" width="160" height="40" rx="8" fill="#122a1a" stroke="#3fb950"/>
+      <text x="290" y="55" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="11" font-weight="700">B. clean_fieldname()</text>
+      <text x="290" y="68" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Custom single-field rules</text>
+      <line x1="370" y1="50" x2="430" y2="50" stroke="#3fb950" stroke-width="2" marker-end="url(#fv)"/>
+      <rect x="430" y="30" width="140" height="40" rx="8" fill="#1e1030" stroke="#bc8cff"/>
+      <text x="500" y="55" text-anchor="middle" fill="#bc8cff" font-family="Sora,sans-serif" font-size="11" font-weight="700">C. clean()</text>
+      <text x="500" y="68" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Cross-field rules (passwords match)</text>
+      <line x1="570" y1="50" x2="630" y2="50" stroke="#e3b341" stroke-width="2" marker-end="url(#fv3)"/>
+      <rect x="630" y="30" width="60" height="40" rx="8" fill="#122a1a" stroke="#3fb950"/>
+      <text x="660" y="55" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="11" font-weight="700">✅</text>
+      <defs>
+        <marker id="fv" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3fb950"/></marker>
+        <marker id="fv3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#e3b341"/></marker>
+      </defs>
+    </svg>
+  </div>
+
+  <h3>Common Form Fields &amp; Widgets</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Form Field</th><th>HTML Output</th><th>Special Widget</th></tr>
+      <tr><td><code>CharField</code></td><td><code>&lt;input type="text"&gt;</code></td><td><code>widget=PasswordInput</code> for passwords</td></tr>
+      <tr><td><code>EmailField</code></td><td><code>&lt;input type="email"&gt;</code></td><td>Auto-validates email format</td></tr>
+      <tr><td><code>ChoiceField</code></td><td><code>&lt;select&gt;</code></td><td><code>widget=RadioSelect</code> for radio buttons</td></tr>
+      <tr><td><code>MultipleChoiceField</code></td><td><code>&lt;select multiple&gt;</code></td><td><code>widget=CheckboxSelectMultiple</code></td></tr>
+      <tr><td><code>FileField</code></td><td><code>&lt;input type="file"&gt;</code></td><td>Need <code>enctype="multipart/form-data"</code></td></tr>
+      <tr><td><code>DateTimeField</code></td><td><code>&lt;input type="text"&gt;</code></td><td><code>widget=DateTimeInput(attrs={'type':'datetime-local'})</code></td></tr>
+    </table>
+  </div>
+  <div class="warn">⚠️ <strong>File Uploads:</strong> When your form has a <code>FileField</code>, you MUST add <code>enctype="multipart/form-data"</code> to your <code>&lt;form&gt;</code> tag AND pass <code>request.FILES</code> to the form: <code>form = MyForm(request.POST, request.FILES)</code></div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: SESSIONS & COOKIES -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-sessions">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#2a1f06">🍪</div>
+    <div class="sec-title"><h2>3.9 — Sessions & Cookies</h2><p>Maintaining state across stateless HTTP</p></div>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-label">🎫 Analogy</div>
+    <p><b>Cookie</b> = a paper wristband at a concert. You show it at each entry point and they know who you are. Small, visible, stored on you.<br><br><b>Session</b> = a numbered token at a government office. Your number is written on a slip (cookie). The actual file with all your info (session data) is locked in their cabinet (server). You only carry the number — not your real info.</p>
+  </div>
+
+  <h3>Why Do We Need Them?</h3>
+  <div class="hcard yellow"><h4>⚠️ HTTP is Stateless</h4><p>Every HTTP request is completely independent. The server forgets you after each request. Without cookies/sessions, you'd have to log in on every single page!</p></div>
+
+  <h3>Cookies</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 700 160" xmlns="http://www.w3.org/2000/svg" style="max-width:700px;width:100%">
+      <rect x="20" y="60" width="90" height="50" rx="8" fill="#161b22" stroke="#30363d"/>
+      <text x="65" y="83" text-anchor="middle" fill="#e6edf3" font-family="Sora,sans-serif" font-size="11" font-weight="700">Browser</text>
+      <text x="65" y="98" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Stores cookies</text>
+
+      <line x1="110" y1="75" x2="280" y2="75" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#ca)"/>
+      <text x="195" y="67" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">1. First request (no cookie)</text>
+
+      <rect x="280" y="40" width="120" height="120" rx="8" fill="#112030" stroke="#58a6ff"/>
+      <text x="340" y="62" text-anchor="middle" fill="#58a6ff" font-family="Sora,sans-serif" font-size="11" font-weight="700">Django Server</text>
+      <text x="340" y="82" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">response.set_cookie(</text>
+      <text x="340" y="96" text-anchor="middle" fill="#e3b341" font-family="Sora,sans-serif" font-size="9">'theme', 'dark',</text>
+      <text x="340" y="110" text-anchor="middle" fill="#e3b341" font-family="Sora,sans-serif" font-size="9">max_age=86400*30</text>
+      <text x="340" y="124" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">)</text>
+      <text x="340" y="148" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Sets-Cookie header</text>
+
+      <line x1="280" y1="95" x2="110" y2="95" stroke="#3fb950" stroke-width="1.5" marker-end="url(#ca2)"/>
+      <text x="195" y="112" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">2. Response: Set cookie</text>
+
+      <line x1="110" y1="115" x2="280" y2="115" stroke="#e3b341" stroke-width="1.5" marker-end="url(#ca3)" stroke-dasharray="5"/>
+      <text x="195" y="130" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">3. Next request: Cookie sent automatically!</text>
+
+      <rect x="440" y="60" width="240" height="50" rx="8" fill="#2a1f06" stroke="#e3b341"/>
+      <text x="560" y="80" text-anchor="middle" fill="#e3b341" font-family="JetBrains Mono,monospace" font-size="10">Cookie: theme=dark; lang=en</text>
+      <text x="560" y="98" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Stored in browser, max ~4KB</text>
+      <defs>
+        <marker id="ca" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#58a6ff"/></marker>
+        <marker id="ca2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3fb950"/></marker>
+        <marker id="ca3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#e3b341"/></marker>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="cblock">
+    <div class="chead"><div class="clang">Cookies in Django Views</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="cm"># SET a cookie</span>
+<span class="kw">def</span> <span class="fn">set_theme</span>(request):
+    response = HttpResponse(<span class="str">"Theme saved!"</span>)
+    response.set_cookie(<span class="str">'theme'</span>, <span class="str">'dark'</span>, max_age=<span class="num">86400</span>*<span class="num">30</span>)
+    <span class="kw">return</span> response
+
+<span class="cm"># READ a cookie</span>
+<span class="kw">def</span> <span class="fn">get_theme</span>(request):
+    theme = request.COOKIES.get(<span class="str">'theme'</span>, <span class="str">'light'</span>)  <span class="cm"># default 'light'</span>
+    <span class="kw">return</span> HttpResponse(f<span class="str">"Your theme: {theme}"</span>)
+
+<span class="cm"># DELETE a cookie</span>
+<span class="kw">def</span> <span class="fn">clear_theme</span>(request):
+    response = HttpResponse(<span class="str">"Cookie deleted"</span>)
+    response.delete_cookie(<span class="str">'theme'</span>)
+    <span class="kw">return</span> response</code></pre>
+  </div>
+
+  <h3>Sessions — Safer for Sensitive Data</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">Sessions in Django Views</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="cm"># STORE in session</span>
+request.session[<span class="str">'username'</span>] = <span class="str">'Sita'</span>
+request.session[<span class="str">'cart'</span>] = [<span class="str">'item1'</span>, <span class="str">'item2'</span>]
+
+<span class="cm"># READ from session</span>
+username = request.session.get(<span class="str">'username'</span>, <span class="str">'Guest'</span>)
+
+<span class="cm"># DELETE specific key</span>
+<span class="kw">del</span> request.session[<span class="str">'username'</span>]
+
+<span class="cm"># CLEAR everything (logout!)</span>
+request.session.flush()
+
+<span class="cm"># settings.py — configure lifetime</span>
+SESSION_COOKIE_AGE = <span class="num">86400</span> * <span class="num">30</span>  <span class="cm"># 30 days</span></code></pre>
+  </div>
+
+  <h3>Cookies vs Sessions Comparison</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Aspect</th><th>Cookies</th><th>Sessions</th></tr>
+      <tr><td>Storage Location</td><td>Client (browser)</td><td>Server (database)</td></tr>
+      <tr><td>Size Limit</td><td>~4 KB</td><td>No practical limit</td></tr>
+      <tr><td>Security</td><td>User can see/edit it</td><td>User only has the ID</td></tr>
+      <tr><td>Access</td><td>JavaScript can read it</td><td>Server-side only</td></tr>
+      <tr><td>Best Use</td><td>Theme, language, preferences</td><td>Login state, cart, sensitive data</td></tr>
+      <tr><td>Django access</td><td><code>request.COOKIES</code></td><td><code>request.session</code></td></tr>
+    </table>
+  </div>
+  <div class="tip">💡 <strong>How they work together:</strong> Sessions use a cookie to store just the Session ID (a random string like <code>abc123xyz</code>). The actual data (username, cart, etc.) stays on the server. You get cookie convenience + session security.</div>
+
+  <h3>Cookie Attributes (Important for Exam)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Attribute</th><th>Purpose</th></tr>
+      <tr><td><code>max_age</code></td><td>Lifetime in seconds. After this, browser deletes cookie.</td></tr>
+      <tr><td><code>secure=True</code></td><td>Only sent over HTTPS connections (prevents interception).</td></tr>
+      <tr><td><code>httponly=True</code></td><td>JavaScript cannot access this cookie (prevents XSS theft).</td></tr>
+      <tr><td><code>samesite='Strict'</code></td><td>Cookie not sent on cross-site requests (prevents CSRF).</td></tr>
+      <tr><td><code>domain</code></td><td>Which domain can access this cookie.</td></tr>
+      <tr><td><code>path</code></td><td>Which URL paths send this cookie.</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: AUTHENTICATION -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-auth">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#1e1030">🔐</div>
+    <div class="sec-title"><h2>3.10 — Authentication & Authorization</h2><p>Who are you? What can you do?</p></div>
+  </div>
+
+  <div class="vs">
+    <div class="vs-col left"><h4>🪪 Authentication — "Who Are You?"</h4><ul><li>Verify user identity</li><li>Check username + password</li><li>Login / Logout</li><li>First step, must happen before authorization</li></ul></div>
+    <div class="vs-col right"><h4>🛡️ Authorization — "What Can You Do?"</h4><ul><li>Determine permissions</li><li>Role-based: Admin/User/Guest</li><li>Resource ownership checks</li><li>Happens after authentication</li></ul></div>
+  </div>
+
+  <h3>Login Flow</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 680 180" xmlns="http://www.w3.org/2000/svg" style="max-width:680px;width:100%">
+      <rect x="10" y="70" width="90" height="50" rx="8" fill="#161b22" stroke="#30363d"/>
+      <text x="55" y="92" text-anchor="middle" fill="#e6edf3" font-family="Sora,sans-serif" font-size="11" font-weight="700">👤 User</text>
+      <text x="55" y="108" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Submits form</text>
+
+      <line x1="100" y1="95" x2="165" y2="95" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#la)"/>
+      <text x="133" y="86" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="8">username+pw</text>
+
+      <rect x="165" y="55" width="130" height="90" rx="8" fill="#112030" stroke="#58a6ff"/>
+      <text x="230" y="78" text-anchor="middle" fill="#58a6ff" font-family="Sora,sans-serif" font-size="11" font-weight="700">Django View</text>
+      <text x="230" y="96" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Get user from DB</text>
+      <text x="230" y="111" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">check_password()</text>
+      <text x="230" y="127" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Compare hash</text>
+
+      <line x1="295" y1="95" x2="355" y2="95" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="4"/>
+      <text x="325" y="86" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="8">Valid!</text>
+
+      <rect x="355" y="55" width="130" height="90" rx="8" fill="#122a1a" stroke="#3fb950"/>
+      <text x="420" y="78" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="11" font-weight="700">Session Created</text>
+      <text x="420" y="96" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">session['user_id'] = 5</text>
+      <text x="420" y="111" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">session['username']</text>
+      <text x="420" y="127" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">= 'Sita'</text>
+
+      <line x1="485" y1="95" x2="545" y2="95" stroke="#e3b341" stroke-width="1.5" marker-end="url(#la3)"/>
+      <text x="515" y="86" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="8">redirect</text>
+
+      <rect x="545" y="70" width="110" height="50" rx="8" fill="#2a1f06" stroke="#e3b341"/>
+      <text x="600" y="91" text-anchor="middle" fill="#e3b341" font-family="Sora,sans-serif" font-size="11" font-weight="700">Dashboard</text>
+      <text x="600" y="108" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">User is logged in</text>
+
+      <defs>
+        <marker id="la" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#58a6ff"/></marker>
+        <marker id="la3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#e3b341"/></marker>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="cblock">
+    <div class="chead"><div class="clang">Complete Login / Dashboard / Logout Views</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">from</span> django.contrib.auth.hashers <span class="kw">import</span> check_password, make_password
+<span class="kw">from</span> .models <span class="kw">import</span> Student
+
+<span class="kw">def</span> <span class="fn">login</span>(request):
+    <span class="kw">if</span> request.method == <span class="str">'POST'</span>:
+        username = request.POST.get(<span class="str">'username'</span>)
+        password = request.POST.get(<span class="str">'password'</span>)
+        <span class="kw">try</span>:
+            student = Student.objects.get(username=username)
+            <span class="kw">if</span> check_password(password, student.password):  <span class="cm"># Compare with hashed PW</span>
+                request.session[<span class="str">'student_id'</span>]   = student.id
+                request.session[<span class="str">'student_name'</span>] = student.name
+                <span class="kw">return</span> redirect(<span class="str">'dashboard'</span>)
+            <span class="kw">else</span>:
+                <span class="kw">return</span> render(request, <span class="str">'login.html'</span>, {<span class="str">'error'</span>: <span class="str">'Wrong password'</span>})
+        <span class="kw">except</span> Student.DoesNotExist:
+            <span class="kw">return</span> render(request, <span class="str">'login.html'</span>, {<span class="str">'error'</span>: <span class="str">'User not found'</span>})
+    <span class="kw">return</span> render(request, <span class="str">'login.html'</span>)
+
+<span class="kw">def</span> <span class="fn">dashboard</span>(request):
+    <span class="kw">if</span> <span class="str">'student_id'</span> <span class="kw">not in</span> request.session:  <span class="cm"># Protect page!</span>
+        <span class="kw">return</span> redirect(<span class="str">'login'</span>)
+    name = request.session.get(<span class="str">'student_name'</span>)
+    <span class="kw">return</span> render(request, <span class="str">'dashboard.html'</span>, {<span class="str">'name'</span>: name})
+
+<span class="kw">def</span> <span class="fn">logout</span>(request):
+    request.session.flush()   <span class="cm"># Clear ALL session data</span>
+    <span class="kw">return</span> redirect(<span class="str">'login'</span>)
+
+<span class="cm"># Creating a user with HASHED password (never store plain text!)</span>
+Student.objects.create(
+    username=<span class="str">'rama'</span>,
+    password=make_password(<span class="str">'mypassword123'</span>),  <span class="cm"># Hashes it securely</span>
+    name=<span class="str">'Rama Shrestha'</span>
+)</code></pre>
+  </div>
+  <div class="danger">🚫 <strong>NEVER store passwords as plain text!</strong> Always use <code>make_password()</code> before saving, and <code>check_password()</code> when verifying. Plain text passwords = massive security breach.</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: MIDDLEWARE -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-middleware">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#122a1a">🔄</div>
+    <div class="sec-title"><h2>3.12 — Middleware</h2><p>Processing every request and response in a pipeline</p></div>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-label">🛂 Airport Security Analogy</div>
+    <p>Middleware is like airport security checkpoints. Every passenger (request) goes through passport control → security scan → customs before boarding (reaching the view). And on the way back (response) they go through duty-free → gate check. Each checkpoint can inspect, modify, or stop the flow.</p>
+  </div>
+
+  <h3>The Middleware Pipeline</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg" style="max-width:700px;width:100%">
+      <!-- Request side -->
+      <text x="30" y="25" fill="#7d8590" font-family="Sora,sans-serif" font-size="11" font-weight="700">REQUEST →</text>
+      <rect x="10" y="35" width="130" height="35" rx="7" fill="#112030" stroke="#58a6ff"/>
+      <text x="75" y="58" text-anchor="middle" fill="#58a6ff" font-family="Sora,sans-serif" font-size="11">SecurityMiddleware</text>
+      <line x1="140" y1="52" x2="165" y2="52" stroke="#3fb950" stroke-width="1.5" marker-end="url(#ma)"/>
+      <rect x="165" y="35" width="120" height="35" rx="7" fill="#112030" stroke="#58a6ff"/>
+      <text x="225" y="58" text-anchor="middle" fill="#58a6ff" font-family="Sora,sans-serif" font-size="11">SessionMiddleware</text>
+      <line x1="285" y1="52" x2="310" y2="52" stroke="#3fb950" stroke-width="1.5" marker-end="url(#ma)"/>
+      <rect x="310" y="35" width="120" height="35" rx="7" fill="#112030" stroke="#58a6ff"/>
+      <text x="370" y="58" text-anchor="middle" fill="#58a6ff" font-family="Sora,sans-serif" font-size="11">CsrfViewMiddleware</text>
+      <line x1="430" y1="52" x2="455" y2="52" stroke="#3fb950" stroke-width="1.5" marker-end="url(#ma)"/>
+      <rect x="455" y="35" width="120" height="35" rx="7" fill="#112030" stroke="#58a6ff"/>
+      <text x="515" y="58" text-anchor="middle" fill="#58a6ff" font-family="Sora,sans-serif" font-size="11">AuthMiddleware</text>
+      <line x1="575" y1="52" x2="600" y2="52" stroke="#3fb950" stroke-width="1.5" marker-end="url(#ma)"/>
+
+      <!-- View -->
+      <rect x="600" y="20" width="90" height="230" rx="8" fill="#122a1a" stroke="#3fb950"/>
+      <text x="645" y="100" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="11" font-weight="700" transform="rotate(-90,645,130)">VIEW FUNCTION</text>
+
+      <!-- Response side -->
+      <text x="30" y="175" fill="#7d8590" font-family="Sora,sans-serif" font-size="11" font-weight="700">← RESPONSE</text>
+      <rect x="10" y="185" width="130" height="35" rx="7" fill="#122a1a" stroke="#3fb950"/>
+      <text x="75" y="208" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="11">SecurityMiddleware</text>
+      <line x1="165" y1="202" x2="140" y2="202" stroke="#bc8cff" stroke-width="1.5" marker-end="url(#ma2)"/>
+      <rect x="165" y="185" width="120" height="35" rx="7" fill="#122a1a" stroke="#3fb950"/>
+      <text x="225" y="208" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="11">SessionMiddleware</text>
+      <line x1="310" y1="202" x2="285" y2="202" stroke="#bc8cff" stroke-width="1.5" marker-end="url(#ma2)"/>
+      <rect x="310" y="185" width="120" height="35" rx="7" fill="#122a1a" stroke="#3fb950"/>
+      <text x="370" y="208" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="11">CsrfViewMiddleware</text>
+      <line x1="455" y1="202" x2="430" y2="202" stroke="#bc8cff" stroke-width="1.5" marker-end="url(#ma2)"/>
+      <rect x="455" y="185" width="120" height="35" rx="7" fill="#122a1a" stroke="#3fb950"/>
+      <text x="515" y="208" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="11">AuthMiddleware</text>
+      <line x1="600" y1="202" x2="575" y2="202" stroke="#bc8cff" stroke-width="1.5" marker-end="url(#ma2)"/>
+
+      <text x="350" y="255" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="10">Request goes forward (top→bottom) | Response goes backward (bottom→top)</text>
+
+      <defs>
+        <marker id="ma" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3fb950"/></marker>
+        <marker id="ma2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#bc8cff"/></marker>
+      </defs>
+    </svg>
+  </div>
+
+  <h3>Django's Built-in Middleware</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Middleware</th><th>What It Does</th></tr>
+      <tr><td><code>SecurityMiddleware</code></td><td>Adds security headers, redirects HTTP→HTTPS</td></tr>
+      <tr><td><code>SessionMiddleware</code></td><td>Reads session ID cookie, loads session data into <code>request.session</code></td></tr>
+      <tr><td><code>CommonMiddleware</code></td><td>URL normalization (appends trailing slashes)</td></tr>
+      <tr><td><code>CsrfViewMiddleware</code></td><td>Validates CSRF token on every POST request</td></tr>
+      <tr><td><code>AuthenticationMiddleware</code></td><td>Attaches <code>request.user</code> — needs SessionMiddleware first!</td></tr>
+      <tr><td><code>MessageMiddleware</code></td><td>Enables flash messages (success/error notifications)</td></tr>
+      <tr><td><code>XFrameOptionsMiddleware</code></td><td>Adds X-Frame-Options header (prevents clickjacking)</td></tr>
+    </table>
+  </div>
+
+  <h3>Writing Custom Middleware</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">myproject/middleware.py</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">import</span> time
+
+<span class="kw">def</span> <span class="fn">request_timing_middleware</span>(get_response):
+    <span class="cm">"""Logs how long each request takes."""</span>
+    <span class="kw">def</span> <span class="fn">middleware</span>(request):
+        start = time.time()
+        response = get_response(request)   <span class="cm"># Call view (and all deeper middleware)</span>
+        duration = time.time() - start
+        print(f<span class="str">"{request.path} took {duration:.2f}s — status {response.status_code}"</span>)
+        <span class="kw">return</span> response
+    <span class="kw">return</span> middleware
+
+<span class="cm"># Register in settings.py MIDDLEWARE list:</span>
+<span class="cm"># 'myproject.middleware.request_timing_middleware'</span></code></pre>
+  </div>
+
+  <div class="warn">⚠️ <strong>Order Matters!</strong> <code>AuthenticationMiddleware</code> must come AFTER <code>SessionMiddleware</code> because Auth reads from the session. If you swap them, <code>request.user</code> will be empty.</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: FRAMEWORKS COMPARISON -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-frameworks">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#112030">⚖️</div>
+    <div class="sec-title"><h2>3.13 — Backend Frameworks Comparison</h2><p>Django vs Flask vs FastAPI vs Rails vs Spring vs Express</p></div>
+  </div>
+
+  <h3>Types of Frameworks</h3>
+  <div class="grid3">
+    <div class="hcard green"><h4>🔋 Full-Stack</h4><p>Everything built-in. Django, Rails, Laravel. Best for complete web apps.</p></div>
+    <div class="hcard blue"><h4>🔩 Micro</h4><p>Minimal core, add what you need. Flask, Express.js. Best for APIs and small apps.</p></div>
+    <div class="hcard orange"><h4>⚡ API-First</h4><p>Optimized for building REST APIs. FastAPI, .NET Web API. Fastest performance.</p></div>
+  </div>
+
+  <h3>Side-by-Side Comparison</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Feature</th><th>Django</th><th>Flask</th><th>FastAPI</th><th>Rails</th><th>Spring Boot</th><th>Express.js</th></tr>
+      <tr><td>Language</td><td>Python</td><td>Python</td><td>Python</td><td>Ruby</td><td>Java</td><td>JavaScript</td></tr>
+      <tr><td>Type</td><td><span class="tag g">Full</span></td><td><span class="tag b">Micro</span></td><td><span class="tag o">API</span></td><td><span class="tag g">Full</span></td><td><span class="tag g">Full</span></td><td><span class="tag b">Micro</span></td></tr>
+      <tr><td>ORM</td><td>Built-in ✅</td><td>Extension</td><td>Extension</td><td>Built-in</td><td>JPA</td><td>Extension</td></tr>
+      <tr><td>Admin Panel</td><td>Built-in ✅</td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
+      <tr><td>Learning Curve</td><td>Medium</td><td>Easy</td><td>Easy</td><td>Medium</td><td>Hard</td><td>Easy</td></tr>
+      <tr><td>Performance</td><td>Good</td><td>Good</td><td>Excellent</td><td>Fair</td><td>Excellent</td><td>Good</td></tr>
+      <tr><td>Async Support</td><td>Limited</td><td>Limited</td><td>Native ✅</td><td>No</td><td>Yes</td><td>Native ✅</td></tr>
+      <tr><td>Used By</td><td>Instagram</td><td>Netflix</td><td>Microsoft</td><td>GitHub</td><td>Alibaba</td><td>Netflix</td></tr>
+    </table>
+  </div>
+
+  <h3>When to Choose What</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Situation</th><th>Recommended</th><th>Why</th></tr>
+      <tr><td>Learning / beginner</td><td>Flask or Express.js</td><td>Simple, less magic, explicit</td></tr>
+      <tr><td>Full web app fast</td><td>Django or Rails</td><td>Everything included, admin free</td></tr>
+      <tr><td>REST APIs</td><td>FastAPI or Express.js</td><td>Fast, lightweight, flexible</td></tr>
+      <tr><td>Enterprise Java</td><td>Spring Boot</td><td>Industry standard for large orgs</td></tr>
+      <tr><td>Real-time (chat, games)</td><td>Express.js + Socket.io</td><td>Node.js non-blocking I/O</td></tr>
+      <tr><td>ML/AI APIs</td><td>FastAPI</td><td>Async, type hints, auto-docs</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: DATABASES -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-databases">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#122a1a">🗄️</div>
+    <div class="sec-title"><h2>3.14 — Database Types</h2><p>SQL vs NoSQL — when to use what</p></div>
+  </div>
+
+  <h3>Relational (SQL) Databases</h3>
+  <div class="analogy">
+    <div class="analogy-label">📊 Analogy</div>
+    <p>An Excel spreadsheet — data in rows and columns, strict structure, columns predefined. Every row must follow the same format. Tables can link to each other via keys (like a "Customer ID" column in Orders table linking to Customers table).</p>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Key Characteristics</div>
+      <ul>
+        <li>Data in structured <b>tables</b> (rows + columns)</li>
+        <li><b>Fixed schema</b> — columns defined upfront</li>
+        <li><b>SQL</b> for queries</li>
+        <li><b>ACID</b> transactions (reliable)</li>
+        <li><b>Strong relationships</b> via foreign keys</li>
+        <li>Vertical scaling (bigger server)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Popular SQL Databases</div>
+      <ul>
+        <li><b>SQLite</b> — default in Django, file-based, good for dev</li>
+        <li><b>PostgreSQL</b> — recommended for production, feature-rich</li>
+        <li><b>MySQL</b> — popular in web hosting</li>
+        <li><b>Oracle</b> — enterprise environments</li>
+        <li><b>SQL Server</b> — Microsoft ecosystem</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>NoSQL Databases</h3>
+  <div class="analogy">
+    <div class="analogy-label">📦 Analogy</div>
+    <p>A filing cabinet where each folder can contain different things — some folders have papers, some have photos, some have receipts. No strict format required. Flexible but harder to enforce consistency.</p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Type</th><th>Format</th><th>Examples</th><th>Use Case</th></tr>
+      <tr><td><span class="tag g">Document</span></td><td>JSON-like documents</td><td>MongoDB, CouchDB</td><td>User profiles, catalogs</td></tr>
+      <tr><td><span class="tag b">Key-Value</span></td><td>Simple key → value</td><td>Redis, DynamoDB</td><td>Caching, sessions</td></tr>
+      <tr><td><span class="tag o">Column-Family</span></td><td>Column groups</td><td>Cassandra, HBase</td><td>Analytics, IoT</td></tr>
+      <tr><td><span class="tag p">Graph</span></td><td>Nodes + edges</td><td>Neo4j, ArangoDB</td><td>Social networks, recommendations</td></tr>
+    </table>
+  </div>
+
+  <h3>SQL vs NoSQL Comparison</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Aspect</th><th>SQL (Relational)</th><th>NoSQL</th></tr>
+      <tr><td>Schema</td><td>Fixed, predefined</td><td>Flexible, dynamic</td></tr>
+      <tr><td>Scaling</td><td>Vertical (bigger server)</td><td>Horizontal (more servers)</td></tr>
+      <tr><td>Relationships</td><td>Strong (foreign keys, JOINs)</td><td>Weak or embedded</td></tr>
+      <tr><td>Consistency</td><td>ACID — guaranteed</td><td>Eventually consistent</td></tr>
+      <tr><td>Best For</td><td>Banking, ERP, e-commerce</td><td>Social media, IoT, logging</td></tr>
+    </table>
+  </div>
+
+  <h3>CRUD — The 4 Database Operations</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Operation</th><th>SQL</th><th>HTTP Method</th><th>Django ORM</th></tr>
+      <tr><td><span class="tag g">Create</span></td><td><code>INSERT INTO</code></td><td>POST</td><td><code>Model.objects.create()</code></td></tr>
+      <tr><td><span class="tag b">Read</span></td><td><code>SELECT</code></td><td>GET</td><td><code>Model.objects.all() / filter()</code></td></tr>
+      <tr><td><span class="tag o">Update</span></td><td><code>UPDATE</code></td><td>PUT / PATCH</td><td><code>obj.field = val; obj.save()</code></td></tr>
+      <tr><td><span class="tag r">Delete</span></td><td><code>DELETE FROM</code></td><td>DELETE</td><td><code>obj.delete()</code></td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: CRUD APP -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-crud">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#112030">🏗️</div>
+    <div class="sec-title"><h2>3.15 — Complete CRUD Application</h2><p>All pieces together — the Notes Manager</p></div>
+  </div>
+
+  <h3>Architecture Overview</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" style="max-width:700px;width:100%">
+      <rect x="10" y="80" width="80" height="50" rx="8" fill="#161b22" stroke="#30363d"/>
+      <text x="50" y="103" text-anchor="middle" fill="#e6edf3" font-family="Sora,sans-serif" font-size="10" font-weight="700">Browser</text>
+      <text x="50" y="118" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="8">User</text>
+
+      <line x1="90" y1="105" x2="150" y2="105" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#cra)"/>
+      <rect x="150" y="60" width="100" height="90" rx="8" fill="#112030" stroke="#58a6ff"/>
+      <text x="200" y="85" text-anchor="middle" fill="#58a6ff" font-family="Sora,sans-serif" font-size="10" font-weight="700">urls.py</text>
+      <text x="200" y="100" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Route to</text>
+      <text x="200" y="112" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">correct view</text>
+
+      <line x1="250" y1="105" x2="310" y2="105" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#cra)"/>
+      <rect x="310" y="60" width="100" height="90" rx="8" fill="#2d1a08" stroke="#f0883e"/>
+      <text x="360" y="85" text-anchor="middle" fill="#f0883e" font-family="Sora,sans-serif" font-size="10" font-weight="700">views.py</text>
+      <text x="360" y="100" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Business</text>
+      <text x="360" y="112" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Logic</text>
+      <text x="360" y="124" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">forms.py</text>
+
+      <line x1="410" y1="90" x2="470" y2="90" stroke="#3fb950" stroke-width="1.5" marker-end="url(#cra2)" stroke-dasharray="3"/>
+      <line x1="470" y1="120" x2="410" y2="120" stroke="#3fb950" stroke-width="1.5" marker-end="url(#cra2)" stroke-dasharray="3"/>
+      <rect x="470" y="60" width="100" height="90" rx="8" fill="#122a1a" stroke="#3fb950"/>
+      <text x="520" y="85" text-anchor="middle" fill="#3fb950" font-family="Sora,sans-serif" font-size="10" font-weight="700">models.py</text>
+      <text x="520" y="100" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">Database</text>
+      <text x="520" y="112" text-anchor="middle" fill="#7d8590" font-family="Sora,sans-serif" font-size="9">ORM queries</text>
+
+      <line x1="360" y1="150" x2="360" y2="175" stroke="#bc8cff" stroke-width="1.5" marker-end="url(#cra3)"/>
+      <rect x="280" y="175" width="160" height="25" rx="6" fill="#1e1030" stroke="#bc8cff"/>
+      <text x="360" y="192" text-anchor="middle" fill="#bc8cff" font-family="Sora,sans-serif" font-size="10">templates/*.html</text>
+
+      <defs>
+        <marker id="cra" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#58a6ff"/></marker>
+        <marker id="cra2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3fb950"/></marker>
+        <marker id="cra3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#bc8cff"/></marker>
+      </defs>
+    </svg>
+  </div>
+
+  <h3>The 4 CRUD Views</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">notes/views.py — All 4 operations</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">from</span> django.shortcuts <span class="kw">import</span> render, redirect, get_object_or_404
+<span class="kw">from</span> django.contrib <span class="kw">import</span> messages
+<span class="kw">from</span> .models <span class="kw">import</span> Note
+<span class="kw">from</span> .forms <span class="kw">import</span> NoteForm
+
+<span class="cm">## READ — show all notes</span>
+<span class="kw">def</span> <span class="fn">index</span>(request):
+    notes = Note.objects.all().order_by(<span class="str">'-id'</span>)
+    <span class="kw">return</span> render(request, <span class="str">'notes/index.html'</span>, {<span class="str">'notes'</span>: notes})
+
+<span class="cm">## CREATE — add new note</span>
+<span class="kw">def</span> <span class="fn">add_note</span>(request):
+    <span class="kw">if</span> request.method == <span class="str">'POST'</span>:
+        form = NoteForm(request.POST)
+        <span class="kw">if</span> form.is_valid():
+            Note.objects.create(**form.cleaned_data)
+            messages.success(request, <span class="str">'Note added!'</span>)
+            <span class="kw">return</span> redirect(<span class="str">'notes:index'</span>)
+    <span class="kw">else</span>:
+        form = NoteForm()
+    <span class="kw">return</span> render(request, <span class="str">'notes/add.html'</span>, {<span class="str">'form'</span>: form})
+
+<span class="cm">## UPDATE — edit existing note</span>
+<span class="kw">def</span> <span class="fn">edit_note</span>(request, note_id):
+    note = get_object_or_404(Note, id=note_id)  <span class="cm"># 404 if not found</span>
+    <span class="kw">if</span> request.method == <span class="str">'POST'</span>:
+        form = NoteForm(request.POST)
+        <span class="kw">if</span> form.is_valid():
+            note.title = form.cleaned_data[<span class="str">'title'</span>]
+            note.description = form.cleaned_data[<span class="str">'description'</span>]
+            note.save()
+            messages.success(request, <span class="str">'Updated!'</span>)
+            <span class="kw">return</span> redirect(<span class="str">'notes:index'</span>)
+    <span class="kw">else</span>:
+        form = NoteForm(initial={<span class="str">'title'</span>: note.title, <span class="str">'description'</span>: note.description})
+    <span class="kw">return</span> render(request, <span class="str">'notes/edit.html'</span>, {<span class="str">'form'</span>: form})
+
+<span class="cm">## DELETE — remove note</span>
+<span class="kw">def</span> <span class="fn">delete_note</span>(request, note_id):
+    note = get_object_or_404(Note, id=note_id)
+    note.delete()
+    messages.success(request, <span class="str">'Deleted!'</span>)
+    <span class="kw">return</span> redirect(<span class="str">'notes:index'</span>)</code></pre>
+  </div>
+
+  <h3>URL Namespacing</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">notes/urls.py — Named URL patterns</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">from</span> django.urls <span class="kw">import</span> path
+<span class="kw">from</span> . <span class="kw">import</span> views
+
+app_name = <span class="str">'notes'</span>   <span class="cm"># Namespace — use as 'notes:index', 'notes:add', etc.</span>
+
+urlpatterns = [
+    path(<span class="str">''</span>,               views.index,       name=<span class="str">'index'</span>),
+    path(<span class="str">'add/'</span>,           views.add_note,    name=<span class="str">'add'</span>),
+    path(<span class="str">'edit/&lt;int:note_id&gt;/'</span>, views.edit_note, name=<span class="str">'edit'</span>),
+    path(<span class="str">'delete/&lt;int:note_id&gt;/'</span>, views.delete_note, name=<span class="str">'delete'</span>),
+]</code></pre>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: TESTING & DEPLOYMENT -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-testing">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#1e1030">🧪</div>
+    <div class="sec-title"><h2>3.16–18 — Testing & Deployment</h2><p>Unit tests, Selenium, CI/CD, production deploy</p></div>
+  </div>
+
+  <h3>Unit Tests (Django TestCase)</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">notes/tests.py</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">from</span> django.test <span class="kw">import</span> TestCase
+<span class="kw">from</span> django.urls <span class="kw">import</span> reverse
+
+<span class="kw">class</span> <span class="cls">NotesTestCase</span>(TestCase):
+    
+    <span class="cm"># Test creating a note via POST</span>
+    <span class="kw">def</span> <span class="fn">test_note_can_be_created</span>(self):
+        response = self.client.post(reverse(<span class="str">'notes:add'</span>), {
+            <span class="str">'title'</span>: <span class="str">'Test Note'</span>,
+            <span class="str">'description'</span>: <span class="str">'At least 10 characters long'</span>
+        })
+        self.assertEqual(response.status_code, <span class="num">302</span>)  <span class="cm"># Redirect after success</span>
+    
+    <span class="cm"># Test validation — short description should fail</span>
+    <span class="kw">def</span> <span class="fn">test_short_description_fails</span>(self):
+        response = self.client.post(reverse(<span class="str">'notes:add'</span>), {
+            <span class="str">'title'</span>: <span class="str">'Test'</span>,
+            <span class="str">'description'</span>: <span class="str">'short'</span>   <span class="cm"># Less than 10 chars</span>
+        })
+        self.assertEqual(response.status_code, <span class="num">200</span>)  <span class="cm"># Form re-rendered with error</span>
+        self.assertContains(response, <span class="str">'at least 10 characters'</span>)
+
+<span class="cm"># Run tests:</span>
+<span class="cm"># python manage.py test</span></code></pre>
+  </div>
+
+  <h3>Selenium UI Testing</h3>
+  <div class="cblock">
+    <div class="chead"><div class="clang">uitest.py — Browser automation</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="kw">from</span> selenium <span class="kw">import</span> webdriver
+<span class="kw">from</span> selenium.webdriver.common.by <span class="kw">import</span> By
+<span class="kw">import</span> time
+
+<span class="kw">def</span> <span class="fn">test_note_creation</span>():
+    driver = webdriver.Chrome()
+    driver.get(<span class="str">'http://127.0.0.1:8000/notes/add/'</span>)
+    
+    driver.find_element(By.NAME, <span class="str">'title'</span>).send_keys(<span class="str">'Selenium Test'</span>)
+    driver.find_element(By.NAME, <span class="str">'description'</span>).send_keys(<span class="str">'Long enough description here'</span>)
+    driver.find_element(By.NAME, <span class="str">'submit'</span>).click()
+    
+    time.sleep(<span class="num">2</span>)   <span class="cm"># Wait for page load</span>
+    title = driver.find_element(By.TAG_NAME, <span class="str">'td'</span>).text
+    assert <span class="str">'Selenium Test'</span> <span class="kw">in</span> title
+    driver.quit()
+
+<span class="cm"># Run with: pytest uitest.py</span></code></pre>
+  </div>
+
+  <div class="vs">
+    <div class="vs-col left"><h4>Django Test Client</h4><ul><li>Tests HTTP requests/responses</li><li>No real browser</li><li>Fast, no setup needed</li><li>Can't test JavaScript</li><li>Use: <code>self.client.get(url)</code></li></ul></div>
+    <div class="vs-col right"><h4>Selenium</h4><ul><li>Controls real browser</li><li>Tests JavaScript execution</li><li>Slower, needs Chrome driver</li><li>Tests full user experience</li><li>Use: <code>driver.find_element().click()</code></li></ul></div>
+  </div>
+
+  <h3>Deployment on Render</h3>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Update settings.py</h4><p>Set <code>DEBUG = 'RENDER' not in os.environ</code> so debug is off in production.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Install WhiteNoise</h4><p><code>pip install whitenoise</code> — serves static files in production without a separate web server.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Create build.sh</h4><p><code>pip install -r requirements.txt && python manage.py collectstatic && python manage.py migrate</code></p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Install Gunicorn</h4><p><code>pip install gunicorn uvicorn</code> — production-grade WSGI server (not Django's dev server).</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Deploy on Render</h4><p>Connect GitHub repo → Render reads render.yaml → auto-deploys on every push.</p></div></div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: SECURITY -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="sec" id="sec-security">
+<div class="wrap">
+  <div class="sec-head">
+    <div class="sec-ico" style="background:#2d0e0e">🛡️</div>
+    <div class="sec-title"><h2>3.19 — Web Security Vulnerabilities</h2><p>XSS, SQL Injection, CSRF — explained with examples</p></div>
+  </div>
+
+  <h3>1. Cross-Site Scripting (XSS)</h3>
+  <div class="analogy">
+    <div class="analogy-label">💉 Analogy</div>
+    <p>XSS is like someone slipping a poisoned note into a public bulletin board. Everyone who reads the board gets exposed. An attacker injects a <code>&lt;script&gt;</code> tag into your site's content. When other users view the page, the script runs in their browser — stealing cookies, redirecting them, etc.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="hcard red"><h4>❌ Vulnerable Code</h4>
+      <div class="cblock" style="margin-top:8px">
+        <pre><code><span class="cm">&lt;!-- |safe disables escaping! --&gt;</span>
+&lt;td&gt;{{ note.description<span class="kw">|safe</span> }}&lt;/td&gt;
+
+<span class="cm">&lt;!-- Attacker submits: --&gt;</span>
+&lt;<span class="cls">script</span>&gt;
+alert(document.cookie);
+&lt;/<span class="cls">script</span>&gt;</code></pre>
+      </div>
+    </div>
+    <div class="hcard green"><h4>✅ Django's Protection</h4>
+      <div class="cblock" style="margin-top:8px">
+        <pre><code><span class="cm">&lt;!-- Default: auto-escaping ON --&gt;</span>
+&lt;td&gt;{{ note.description }}&lt;/td&gt;
+
+<span class="cm">&lt;!-- Django converts to safe text: --&gt;</span>
+&amp;lt;script&amp;gt;
+alert(document.cookie);
+&amp;lt;/script&amp;gt;
+<span class="cm">&lt;!-- User sees text, not JS! --&gt;</span></code></pre>
+      </div>
+    </div>
+  </div>
+  <div class="danger">🚫 <strong>Never use <code>|safe</code> on user-supplied content!</strong> Django's auto-escaping is your XSS shield. Don't disable it.</div>
+
+  <h3>2. SQL Injection</h3>
+  <div class="analogy">
+    <div class="analogy-label">💣 Analogy</div>
+    <p>Imagine a search box where you type a name to find a user. You type: <code>'; DROP TABLE users; --</code>. A poorly written system treats this as part of the SQL command and deletes your entire user table!</p>
+  </div>
+
+  <div class="hcard red">
+    <h4>❌ Vulnerable — String Interpolation in SQL</h4>
+    <div class="cblock" style="margin-top:8px">
+      <pre><code><span class="cm"># NEVER do this!</span>
+sql = f<span class="str">"INSERT INTO notes (title) VALUES ('{title}')"</span>
+<span class="cm"># If title = "'); DELETE FROM notes; --"</span>
+<span class="cm"># SQL becomes: INSERT INTO notes (title) VALUES (''); DELETE FROM notes; --')</span>
+<span class="cm"># → ALL notes DELETED!</span></code></pre>
+    </div>
+  </div>
+
+  <div class="hcard green">
+    <h4>✅ Safe — Use Django ORM (always parameterized)</h4>
+    <div class="cblock" style="margin-top:8px">
+      <pre><code><span class="cm"># Django ORM = automatically safe from SQL injection</span>
+Note.objects.create(title=title, description=description)
+
+<span class="cm"># Or if using raw SQL, use parameterized queries:</span>
+cursor.execute(<span class="str">"INSERT INTO notes (title) VALUES (%s)"</span>, [title])</code></pre>
+    </div>
+  </div>
+
+  <h3>3. CSRF (Cross-Site Request Forgery)</h3>
+  <div class="analogy">
+    <div class="analogy-label">🎭 Analogy</div>
+    <p>You're logged into your bank. A hacker sends you a link to a "funny cat video". That page silently submits a form to your bank: "Transfer Rs 50,000 to hacker". Your browser sends your bank cookie automatically — the bank thinks it's YOU! Django's CSRF token prevents this because the hacker's page can't know your secret token.</p>
+  </div>
+
+  <div class="cblock">
+    <div class="chead"><div class="clang">Hacker's page (CSRF attack)</div><div class="cdots"><span class="dr"></span><span class="dy"></span><span class="dg"></span></div></div>
+    <pre><code><span class="cm">&lt;!-- Hidden form auto-submits to your app --&gt;</span>
+&lt;<span class="cls">form</span> id="evil" action="http://yourapp.com/notes/add/" method="POST" style="display:none"&gt;
+    &lt;<span class="cls">input</span> name="title" value="Hacked!"&gt;
+    &lt;<span class="cls">input</span> name="description" value="You've been CSRF'd"&gt;
+&lt;/<span class="cls">form</span>&gt;
+&lt;<span class="cls">script</span>&gt;document.getElementById('evil').submit();&lt;/<span class="cls">script</span>&gt;
+
+<span class="cm">&lt;!-- Django blocks this because there's no csrfmiddlewaretoken!
+     Returns 403 Forbidden. ✅ --&gt;</span></code></pre>
+  </div>
+
+  <h3>Security Summary</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>Attack</th><th>What it does</th><th>Django's Defense</th><th>Your job</th></tr>
+      <tr><td><span class="tag r">XSS</span></td><td>Injects malicious scripts</td><td>Auto-escapes templates</td><td>Never use <code>|safe</code> on user input</td></tr>
+      <tr><td><span class="tag r">SQL Injection</span></td><td>Manipulates database queries</td><td>ORM parameterizes queries</td><td>Always use ORM or <code>%s</code> placeholders</td></tr>
+      <tr><td><span class="tag r">CSRF</span></td><td>Tricks browser to submit fake requests</td><td>CsrfViewMiddleware + token</td><td>Always add <code>{% csrf_token %}</code> to POST forms</td></tr>
+      <tr><td><span class="tag o">Clickjacking</span></td><td>Hides site in invisible iframe</td><td>XFrameOptionsMiddleware</td><td>Included by default</td></tr>
+      <tr><td><span class="tag o">Plain passwords</span></td><td>Leaked passwords are readable</td><td>—</td><td>Always use <code>make_password()</code></td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- JS -->
+<script>
+function show(id) {
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.nbtn').forEach(b => b.classList.remove('on'));
+  document.getElementById('sec-' + id).classList.add('on');
+  event.target.classList.add('on');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+</script>
+</body>
+</html>
