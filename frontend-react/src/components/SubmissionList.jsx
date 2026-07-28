@@ -4,6 +4,18 @@ import API from '../services/api';
 
 const getMediaUrl = (path) => path?.startsWith('http') ? path : `${API.defaults.baseURL}${path}`;
 
+// Color palette for highlighting matching chunks
+const HIGHLIGHT_COLORS = [
+    '#FFC0CB', '#FFD700', '#90EE90', '#87CEEB', '#DDA0DD', 
+    '#F0E68C', '#FFB6C1', '#98FB98', '#87CEFA', '#DA70D6',
+    '#F5DEB3', '#FFB347', '#98D8C8', '#FFDAB9', '#B19CD9'
+];
+
+const getChunkColor = (colorId) => {
+    if (colorId < 0) return '#fde68a';
+    return HIGHLIGHT_COLORS[colorId % HIGHLIGHT_COLORS.length];
+};
+
 const highlightText = (text, highlights = []) => {
     if (!text) return null;
     const safeText = text;
@@ -18,7 +30,23 @@ const highlightText = (text, highlights = []) => {
             parts.push(<span key={`text-${index}`}>{safeText.slice(cursor, start)}</span>);
         }
         if (end > start) {
-            parts.push(<mark key={`mark-${index}`} style={{ backgroundColor: '#fde68a', padding: '0 2px', borderRadius: '4px' }}>{safeText.slice(start, end)}</mark>);
+            const backgroundColor = getChunkColor(highlight?.color_id ?? -1);
+            parts.push(
+                <mark 
+                    key={`mark-${index}`} 
+                    style={{ 
+                        backgroundColor, 
+                        padding: '0 2px', 
+                        borderRadius: '4px',
+                        border: '1px solid rgba(0,0,0,0.1)',
+                        cursor: 'help',
+                        title: `Match score - J: ${highlight?.jaccard}, T: ${highlight?.tfidf}, S: ${highlight?.semantic}`
+                    }}
+                    title={`J: ${highlight?.jaccard}, T: ${highlight?.tfidf}, S: ${highlight?.semantic}`}
+                >
+                    {safeText.slice(start, end)}
+                </mark>
+            );
         }
         cursor = Math.max(cursor, end);
     });
@@ -259,7 +287,7 @@ const SubmissionList = ({ assignmentId }) => {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '18px' }}>
                             <div style={{ border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', background: '#f8fafc' }}>
                                 <h4 style={{ marginTop: 0 }}>{comparisonPair.leftSubmission?.student_username || comparisonPair.leftSubmission?.student || 'Left submission'}</h4>
-                                <div style={{ marginTop: '10px', minHeight: '280px', maxHeight: '420px', overflowY: 'auto', lineHeight: 1.7 }}>
+                                <div style={{ marginTop: '10px', minHeight: '280px', maxHeight: '420px', overflowY: 'auto', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
                                     {comparisonPair.leftSubmission?.file ? (
                                         <div>
                                             {(() => {
@@ -268,17 +296,26 @@ const SubmissionList = ({ assignmentId }) => {
                                                 if (isPdf) {
                                                     return <iframe title="left-document" src={fileUrl} style={{ width: '100%', height: '320px', border: '1px solid #e2e8f0', borderRadius: '10px' }} />;
                                                 }
-                                                return <div>{highlightText(comparisonPair.leftSubmission?.content || comparisonPair.leftSubmission?.extracted_text || '', comparisonPair.cell?.highlights?.map((item) => item.left) || [])}</div>;
+                                                // Use full extracted text from batchReport
+                                                const leftFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.leftSubmission.id);
+                                                const displayText = leftFile?.text || comparisonPair.leftSubmission?.content || '';
+                                                return <div>{highlightText(displayText, comparisonPair.cell?.highlights?.map((item) => item.left) || [])}</div>;
                                             })()}
                                         </div>
                                     ) : (
-                                        <div>{highlightText(comparisonPair.leftSubmission?.content || '', comparisonPair.cell?.highlights?.map((item) => item.left) || [])}</div>
+                                        <div>
+                                            {(() => {
+                                                const leftFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.leftSubmission.id);
+                                                const displayText = leftFile?.text || comparisonPair.leftSubmission?.content || '';
+                                                return highlightText(displayText, comparisonPair.cell?.highlights?.map((item) => item.left) || []);
+                                            })()}
+                                        </div>
                                     )}
                                 </div>
                             </div>
                             <div style={{ border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', background: '#f8fafc' }}>
                                 <h4 style={{ marginTop: 0 }}>{comparisonPair.rightSubmission?.student_username || comparisonPair.rightSubmission?.student || 'Right submission'}</h4>
-                                <div style={{ marginTop: '10px', minHeight: '280px', maxHeight: '420px', overflowY: 'auto', lineHeight: 1.7 }}>
+                                <div style={{ marginTop: '10px', minHeight: '280px', maxHeight: '420px', overflowY: 'auto', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
                                     {comparisonPair.rightSubmission?.file ? (
                                         <div>
                                             {(() => {
@@ -287,11 +324,20 @@ const SubmissionList = ({ assignmentId }) => {
                                                 if (isPdf) {
                                                     return <iframe title="right-document" src={fileUrl} style={{ width: '100%', height: '320px', border: '1px solid #e2e8f0', borderRadius: '10px' }} />;
                                                 }
-                                                return <div>{highlightText(comparisonPair.rightSubmission?.content || comparisonPair.rightSubmission?.extracted_text || '', comparisonPair.cell?.highlights?.map((item) => item.right) || [])}</div>;
+                                                // Use full extracted text from batchReport
+                                                const rightFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.rightSubmission.id);
+                                                const displayText = rightFile?.text || comparisonPair.rightSubmission?.content || '';
+                                                return <div>{highlightText(displayText, comparisonPair.cell?.highlights?.map((item) => item.right) || [])}</div>;
                                             })()}
                                         </div>
                                     ) : (
-                                        <div>{highlightText(comparisonPair.rightSubmission?.content || '', comparisonPair.cell?.highlights?.map((item) => item.right) || [])}</div>
+                                        <div>
+                                            {(() => {
+                                                const rightFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.rightSubmission.id);
+                                                const displayText = rightFile?.text || comparisonPair.rightSubmission?.content || '';
+                                                return highlightText(displayText, comparisonPair.cell?.highlights?.map((item) => item.right) || []);
+                                            })()}
+                                        </div>
                                     )}
                                 </div>
                             </div>
