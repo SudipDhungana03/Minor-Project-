@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view
 from .detector_service import run_analysis, run_source_verification
 from ..models import DetectionResult
 from apps.classroom.models import Submission
+from .plagiarism_vector import build_similarity_report, extract_text_from_submission_file
 import os
 import logging
 import io
@@ -214,3 +215,37 @@ def verify_submission_sources(request):
         "message": "Source verification started",
         "report": report
     })
+
+
+@api_view(['POST'])
+def run_batch_plagiarism_analysis(request):
+    submission_ids = request.data.get('submission_ids') or []
+    if not submission_ids:
+        return Response({'error': 'At least one submission id is required.'}, status=400)
+
+    submissions = []
+    for submission_id in submission_ids:
+        try:
+            submission = Submission.objects.get(id=submission_id)
+        except Submission.DoesNotExist:
+            continue
+
+        text = submission.content or ''
+        if submission.file:
+            extracted = extract_text_from_submission_file(submission.file)
+            if extracted:
+                text = f"{text}\n\n{extracted}" if text.strip() else extracted
+
+        submissions.append({
+            'id': submission.id,
+            'title': submission.assignment.title if submission.assignment_id else 'Submission',
+            'student_name': submission.student.username if getattr(submission.student, 'username', None) else '',
+            'file_name': os.path.basename(submission.file.name) if submission.file else '',
+            'file_url': submission.file.url if submission.file else '',
+            'text': text,
+        })
+
+    if not submissions:
+        return Response({'error': 'No valid submissions were found.'}, status=404)
+
+    return Response(build_similarity_report(submissions))
