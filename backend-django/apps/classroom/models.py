@@ -64,6 +64,7 @@ class Submission(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     content = models.TextField(blank=True, null=True) # For the note/comment
     file = models.FileField(upload_to='submissions/', blank=True, null=True) # For file upload
+    extracted_text = models.TextField(blank=True, null=True) # Cached extracted text from files for faster analysis
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -3,6 +3,7 @@ import os
 import logging
 import re
 import math
+from datetime import datetime
 from django.conf import settings
 from .firecrawl_service import find_plagiarism
 
@@ -156,13 +157,6 @@ def run_analysis(text):
             })
             continue
 
-        try:
-            if prediction == 1:
-                source_data = find_plagiarism(chunk)
-        except Exception:
-            logger.exception('Error while running plagiarism check for chunk %s', i)
-            source_data = {"status": "error", "source_url": None, "score": 0}
-
         analysis_results.append({
             "chunk_index": i,
             "text": chunk,
@@ -170,9 +164,11 @@ def run_analysis(text):
             "word_count": len(chunk.split()),
             "is_ai": bool(prediction == 1),
             "probability": probability,
-            "source": source_data,
+            "source": None,
         })
 
+    # Run source lookup in a second pass after the AI scoring is complete.
+    # This keeps the initial report fast and still adds source info when needed.
     total_words = sum(r['word_count'] for r in analysis_results)
     ai_words = sum(r['word_count'] for r in analysis_results if r['is_ai'])
     total_chunks = len(analysis_results)
@@ -195,7 +191,70 @@ def run_analysis(text):
         "ai_text_percentage": ai_text_percentage,
         "average_probability": average_probability,
         "verdict": verdict,
-        "chunks": analysis_results
+        "chunks": analysis_results,
+        "source_verification": {
+            "completed": False,
+            "started_at": datetime.utcnow().isoformat() + 'Z'
+        }
     }
+
+
+def _needs_source_lookup(chunk):
+    return bool(chunk.get('is_ai')) or chunk.get('probability', 0) >= 0.35 or chunk.get('word_count', 0) <= 100
+
+
+def _combine_adjacent_chunk_texts(chunks, index):
+    current = chunks[index]
+    word_count = current.get('word_count', 0)
+    sentence_count = current.get('sentence_count', 0)
+
+    if word_count > 35 and sentence_count > 1:
+        return []
+
+    combined = []
+    prev_chunk = chunks[index - 1] if index > 0 else None
+    next_chunk = chunks[index + 1] if index + 1 < len(chunks) else None
+
+    if next_chunk is not None:
+        combined.append(f"{current['text']} {next_chunk['text']}")
+    if prev_chunk is not None:
+        combined.append(f"{prev_chunk['text']} {current['text']}")
+
+    return combined
+
+
+def run_source_verification(report):
+    if not report or 'chunks' not in report:
+        return report
+
+    for index, chunk_data in enumerate(report['chunks']):
+        if chunk_data.get('source') is not None:
+            continue
+        if not _needs_source_lookup(chunk_data):
+            continue
+
+        try:
+            source_result = find_plagiarism(chunk_data['text'])
+            if source_result and source_result.get('status') != 'Clear':
+                chunk_data['source'] = source_result
+                continue
+
+            for combined_text in _combine_adjacent_chunk_texts(report['chunks'], index):
+                source_result = find_plagiarism(combined_text)
+                if source_result and source_result.get('status') != 'Clear':
+                    chunk_data['source'] = source_result
+                    break
+
+            if chunk_data.get('source') is None:
+                chunk_data['source'] = {'status': 'Clear', 'source_url': None, 'score': 0}
+        except Exception:
+            logger.exception('Error while running plagiarism check for chunk %s', chunk_data.get('chunk_index'))
+            chunk_data['source'] = {"status": "error", "source_url": None, "score": 0}
+
+    report['source_verification'] = {
+        'completed': True,
+        'completed_at': datetime.utcnow().isoformat() + 'Z'
+    }
+    return report
 
 
