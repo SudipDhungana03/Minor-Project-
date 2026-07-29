@@ -6,9 +6,9 @@ const getMediaUrl = (path) => path?.startsWith('http') ? path : `${API.defaults.
 
 // Color palette for highlighting matching chunks
 const HIGHLIGHT_COLORS = [
-    '#FFC0CB', '#FFD700', '#90EE90', '#87CEEB', '#DDA0DD', 
-    '#F0E68C', '#FFB6C1', '#98FB98', '#87CEFA', '#DA70D6',
-    '#F5DEB3', '#FFB347', '#98D8C8', '#FFDAB9', '#B19CD9'
+    '#FEF3C7', '#E0F2FE', '#ECFDF5', '#FCE7F3', '#EFF6FF',
+    '#F5F3FF', '#FFF7ED', '#F8FAFC', '#FDF2F8', '#EFF6EE',
+    '#FFF1F2', '#EFFAFB', '#FAF5FF', '#FFFBEB', '#EDE9FE'
 ];
 
 const getChunkColor = (colorId) => {
@@ -21,7 +21,16 @@ const highlightText = (text, highlights = []) => {
     const safeText = text;
     const validHighlights = [...highlights]
         .filter((highlight) => highlight && typeof highlight.start === 'number' && typeof highlight.end === 'number' && highlight.end > highlight.start)
-        .sort((a, b) => (a.start || 0) - (b.start || 0));
+        .sort((a, b) => (a.start || 0) - (b.start || 0))
+        .reduce((acc, highlight) => {
+            const start = Math.max(highlight.start, acc.cursor);
+            const end = Math.min(highlight.end, safeText.length);
+            if (end > start) {
+                acc.highlights.push({ ...highlight, start, end });
+                acc.cursor = end;
+            }
+            return acc;
+        }, { highlights: [], cursor: 0 }).highlights;
     const parts = [];
     let cursor = 0;
 
@@ -31,28 +40,26 @@ const highlightText = (text, highlights = []) => {
         if (start > cursor) {
             parts.push(<span key={`text-${index}`}>{safeText.slice(cursor, start)}</span>);
         }
-        if (end > start) {
-            const backgroundColor = getChunkColor(highlight?.color_id ?? -1);
-            parts.push(
-                <mark 
-                    key={`mark-${index}`} 
-                    className="highlight-tooltip"
-                    data-tooltip={`J: ${highlight?.jaccard}, T: ${highlight?.tfidf}, S: ${highlight?.semantic}`}
-                    style={{ 
-                        backgroundColor, 
-                        padding: '0 2px', 
-                        borderRadius: '4px',
-                        border: '1px solid rgba(0,0,0,0.1)',
-                        cursor: 'help',
-                        position: 'relative',
-                        display: 'inline-block',
-                    }}
-                    title={`J: ${highlight?.jaccard}, T: ${highlight?.tfidf}, S: ${highlight?.semantic}`}
-                >
-                    {safeText.slice(start, end)}
-                </mark>
-            );
-        }
+        const backgroundColor = getChunkColor(highlight?.color_id ?? -1);
+        parts.push(
+            <mark
+                key={`mark-${index}`}
+                className="highlight-tooltip"
+                data-tooltip={`J: ${highlight?.jaccard}, T: ${highlight?.tfidf}, S: ${highlight?.semantic}`}
+                style={{
+                    backgroundColor,
+                    padding: '0 3px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(148, 163, 184, 0.3)',
+                    cursor: 'help',
+                    position: 'relative',
+                    display: 'inline-block',
+                }}
+                title={`J: ${highlight?.jaccard}, T: ${highlight?.tfidf}, S: ${highlight?.semantic}`}
+            >
+                {safeText.slice(start, end)}
+            </mark>
+        );
         cursor = Math.max(cursor, end);
     });
 
@@ -146,11 +153,11 @@ const SubmissionList = ({ assignmentId }) => {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
                 <h4 style={{ fontSize: '1.2rem', margin: 0 }}>Student Submissions</h4>
                 <button
                     onClick={() => setShowBatchModal(true)}
-                    style={{ background: 'linear-gradient(135deg, #4338ca 0%, #4f46e5 100%)', color: '#fff', border: 'none', borderRadius: '999px', padding: '10px 16px', fontWeight: 700, cursor: 'pointer' }}
+                    style={{ backgroundColor: '#4338ca', color: '#fff', border: 'none', borderRadius: '10px', padding: '8px 16px', fontWeight: 600, cursor: 'pointer', width: '220px' }}
                 >
                     Check Plagiarism
                 </button>
@@ -170,38 +177,41 @@ const SubmissionList = ({ assignmentId }) => {
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <p style={{ margin: 0, color: '#6b7280', fontSize: '0.95rem' }}>Submitted: {new Date(sub.submitted_at).toLocaleString()}</p>
-                                <button
-                                    onClick={async () => {
-                                        if (analyzing[sub.id]) return;
-                                        setAnalyzing((prev) => ({ ...prev, [sub.id]: true }));
-                                        try {
-                                            const res = await API.post('/api/analyze/', { submission_id: sub.id });
-                                            const report = res.data.report || res.data;
-                                            setAnalysisMap((prev) => ({ ...prev, [sub.id]: report }));
-                                        } catch (err) {
-                                            console.error('Analyze failed for submission', sub.id, err);
-                                        } finally {
-                                            setAnalyzing((prev) => ({ ...prev, [sub.id]: false }));
-                                        }
-                                    }}
-                                    disabled={!!analyzing[sub.id]}
-                                    style={{
-                                        backgroundColor: analyzing[sub.id] ? '#a78bfa' : '#4f46e5',
-                                        color: '#fff',
-                                        padding: '8px 12px',
-                                        borderRadius: '10px',
-                                        border: 'none',
-                                        cursor: analyzing[sub.id] ? 'wait' : 'pointer',
-                                        fontWeight: 600,
-                                    }}
-                                >
-                                    {analyzing[sub.id] ? 'Analyzing...' : 'Analyze for AI Content'}
-                                </button>
-                                {analysisMap[sub.id] && (
-                                    <button onClick={() => navigate(`/submission/${sub.id}`)} style={{ background: 'transparent', border: 'none', color: '#4338ca', fontWeight: 700, cursor: 'pointer' }}>
-                                        View analysis
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                                    <button
+                                        onClick={async () => {
+                                            if (analyzing[sub.id]) return;
+                                            setAnalyzing((prev) => ({ ...prev, [sub.id]: true }));
+                                            try {
+                                                const res = await API.post('/api/analyze/', { submission_id: sub.id });
+                                                const report = res.data.report || res.data;
+                                                setAnalysisMap((prev) => ({ ...prev, [sub.id]: report }));
+                                            } catch (err) {
+                                                console.error('Analyze failed for submission', sub.id, err);
+                                            } finally {
+                                                setAnalyzing((prev) => ({ ...prev, [sub.id]: false }));
+                                            }
+                                        }}
+                                        disabled={!!analyzing[sub.id]}
+                                        style={{
+                                            backgroundColor: analyzing[sub.id] ? '#a78bfa' : '#4f46e5',
+                                            color: '#fff',
+                                            padding: '8px 12px',
+                                            borderRadius: '10px',
+                                            border: 'none',
+                                            cursor: analyzing[sub.id] ? 'wait' : 'pointer',
+                                            fontWeight: 600,
+                                            minWidth: '160px'
+                                        }}
+                                    >
+                                        {analyzing[sub.id] ? 'Analyzing...' : 'Analyze for AI Content'}
                                     </button>
-                                )}
+                                    {analysisMap[sub.id] && (
+                                        <button onClick={() => navigate(`/submission/${sub.id}`)} style={{ background: 'transparent', border: 'none', color: '#4338ca', fontWeight: 700, cursor: 'pointer' }}>
+                                            View analysis
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <p style={{ margin: '12px 0 8px', color: '#334155' }}><strong>Description:</strong> {sub.content || 'No description provided.'}</p>

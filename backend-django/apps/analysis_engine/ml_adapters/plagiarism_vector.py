@@ -65,46 +65,47 @@ def _split_sentences(paragraph):
 
 
 def _build_chunks_from_paragraphs(paragraphs):
-    """Build chunks from paragraphs using the same logic as AI detector."""
-    chunks = []
-    buffer = []
+    """Build chunks from paragraphs using a paragraph-first strategy.
 
-    def flush_buffer():
-        nonlocal buffer
-        if buffer:
-            chunks.append(' '.join(buffer).strip())
-            buffer = []
+    Rules implemented:
+    - If a paragraph has <= 5 sentences, treat the whole paragraph as a single chunk.
+    - If a paragraph has > 5 sentences, split it into non-overlapping chunks of
+      5 sentences (no overlap) to avoid context duplication/jumbling.
+    - If the WHOLE document is a single paragraph (no double-newline splits),
+      use an overlapping sliding window so context is preserved across chunk
+      boundaries. Window defaults to 5 sentences with a step of 3.
+    """
+    chunks = []
+    # detect single-paragraph documents (no real paragraph breaks)
+    single_paragraph_doc = len(paragraphs) == 1
 
     for paragraph in paragraphs:
         sentences = _split_sentences(paragraph)
         if not sentences:
             continue
 
-        if len(sentences) >= 8:
-            if buffer:
-                buffer.extend(sentences[:3])
-                flush_buffer()
-                sentences = sentences[3:]
-            for start in range(0, len(sentences), 4):
-                chunk_sentences = sentences[start:start + 4]
+        # short paragraphs: keep intact
+        if len(sentences) <= 5 and not single_paragraph_doc:
+            chunks.append(paragraph.strip())
+            continue
+
+        # If it's a single large paragraph document, use overlapping windows
+        if single_paragraph_doc:
+            window_size = 5
+            step_size = 3
+            for start in range(0, len(sentences), step_size):
+                chunk_sentences = sentences[start:start + window_size]
                 if chunk_sentences:
                     chunks.append(' '.join(chunk_sentences).strip())
             continue
 
-        if len(sentences) < 3:
-            buffer.extend(sentences)
-            if len(buffer) >= 3:
-                flush_buffer()
-            continue
+        # Multi-paragraph document, long paragraph: split into non-overlapping groups
+        window_size = 5
+        for start in range(0, len(sentences), window_size):
+            chunk_sentences = sentences[start:start + window_size]
+            if chunk_sentences:
+                chunks.append(' '.join(chunk_sentences).strip())
 
-        if buffer:
-            buffer.extend(sentences)
-            flush_buffer()
-            continue
-
-        chunks.append(' '.join(sentences).strip())
-
-    flush_buffer()
     return chunks
 
 
@@ -283,68 +284,54 @@ def _comparison_verdict(score):
 
 def _compare_chunks(left_chunks, right_chunks):
     """Compare chunks between two documents and return detailed chunk-level analysis.
-    
+
     Returns:
-        - chunk_matches: List of matching chunks with their scores
-        - highlight_map: Mapping of chunk indices to color IDs for highlighting
+        - chunk_matches: List of matching chunks with their scores and color IDs
     """
-    chunk_matches = []
-    
-    # Compare each left chunk to all right chunks
+    candidates = []
+
     for left_idx, left_chunk in enumerate(left_chunks):
         for right_idx, right_chunk in enumerate(right_chunks):
             jaccard = _jaccard_similarity(left_chunk, right_chunk)
             tfidf = _tfidf_similarity(left_chunk, right_chunk)
             semantic = _semantic_similarity(left_chunk, right_chunk)
-            
-            # Flag if any similarity metric is above threshold
             is_match = jaccard >= 0.15 or tfidf >= 0.15 or semantic >= 0.12
-            
-            if is_match:
-                chunk_matches.append({
-                    'left_chunk_idx': left_idx,
-                    'right_chunk_idx': right_idx,
-                    'left_text': left_chunk[:200],  # Preview
-                    'right_text': right_chunk[:200],  # Preview
-                    'scores': {
-                        'jaccard': jaccard,
-                        'tfidf': tfidf,
-                        'semantic': semantic,
-                    },
-                    'is_match': True,
-                })
-    
-    # Build highlight map: assign color IDs to matching chunks
-    # Chunks that match the same chunk on the other side get the same color
-    highlight_map = {}
-    color_id = 0
-    
-    for match in chunk_matches:
-        left_idx = match['left_chunk_idx']
-        right_idx = match['right_chunk_idx']
-        
-        # Use explicit None checks because color 0 should still be valid.
-        left_color = highlight_map.get(('left', left_idx), None)
-        right_color = highlight_map.get(('right', right_idx), None)
-        
-        if left_color is not None and right_color is not None and left_color != right_color:
-            # Merge colors - use the smaller one
-            merge_to = min(left_color, right_color)
-            merge_from = max(left_color, right_color)
-            for key in list(highlight_map.keys()):
-                if highlight_map[key] == merge_from:
-                    highlight_map[key] = merge_to
-        elif left_color is not None:
-            highlight_map[('right', right_idx)] = left_color
-        elif right_color is not None:
-            highlight_map[('left', left_idx)] = right_color
-        else:
-            # Assign new color
-            highlight_map[('left', left_idx)] = color_id
-            highlight_map[('right', right_idx)] = color_id
-            color_id += 1
-    
-    return chunk_matches, highlight_map
+            if not is_match:
+                continue
+
+            score = round((jaccard + tfidf + semantic) / 3, 3)
+            candidates.append({
+                'left_chunk_idx': left_idx,
+                'right_chunk_idx': right_idx,
+                'left_text': left_chunk[:200],
+                'right_text': right_chunk[:200],
+                'scores': {
+                    'jaccard': jaccard,
+                    'tfidf': tfidf,
+                    'semantic': semantic,
+                },
+                'score': score,
+            })
+
+    # Choose the strongest unique left/right matches to avoid duplicate chunk reuse.
+    candidates.sort(key=lambda item: item['score'], reverse=True)
+    assigned_left = set()
+    assigned_right = set()
+    chunk_matches = []
+
+    for candidate in candidates:
+        left_idx = candidate['left_chunk_idx']
+        right_idx = candidate['right_chunk_idx']
+        if left_idx in assigned_left or right_idx in assigned_right:
+            continue
+
+        candidate['is_match'] = True
+        candidate['color_id'] = len(chunk_matches)
+        chunk_matches.append(candidate)
+        assigned_left.add(left_idx)
+        assigned_right.add(right_idx)
+
+    return chunk_matches
 
 
 def _find_chunk_positions(text, chunks):
@@ -380,7 +367,7 @@ def _find_chunk_positions(text, chunks):
     return positions
 
 
-def _build_chunk_highlights(left_text, left_chunks, right_text, right_chunks, chunk_matches, highlight_map):
+def _build_chunk_highlights(left_text, left_chunks, right_text, right_chunks, chunk_matches):
     """Build highlight ranges for matching chunks."""
     left_positions = _find_chunk_positions(left_text, left_chunks)
     right_positions = _find_chunk_positions(right_text, right_chunks)
@@ -390,7 +377,7 @@ def _build_chunk_highlights(left_text, left_chunks, right_text, right_chunks, ch
     for match in chunk_matches:
         left_idx = match['left_chunk_idx']
         right_idx = match['right_chunk_idx']
-        color_id = highlight_map.get(('left', left_idx), -1)
+        color_id = match.get('color_id', -1)
         
         left_pos = left_positions[left_idx] if left_idx < len(left_positions) else {'start': 0, 'end': 0}
         right_pos = right_positions[right_idx] if right_idx < len(right_positions) else {'start': 0, 'end': 0}
@@ -574,7 +561,7 @@ def build_similarity_report(submissions):
             right_chunks = _build_chunks_from_paragraphs(right_paragraphs)
             
             # Compare chunks (kept for scoring / flagging)
-            chunk_matches, highlight_map = _compare_chunks(left_chunks, right_chunks)
+            chunk_matches = _compare_chunks(left_chunks, right_chunks)
 
             # Build chunk-based highlights first, which preserve the same color
             # for matching chunks on both sides. Fall back to sentence-level
@@ -585,7 +572,6 @@ def build_similarity_report(submissions):
                 right_text,
                 right_chunks,
                 chunk_matches,
-                highlight_map,
             ) if chunk_matches else _build_sentence_highlights(left_text, right_text)
 
             # Calculate overall document similarity — always use full-document metrics

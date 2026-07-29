@@ -18,3 +18,15 @@ class PlagiarismVectorTests(SimpleTestCase):
         self.assertGreater(report["matrix"][0][1]["scores"]["tfidf"], 0.8)
         self.assertGreater(report["matrix"][0][1]["scores"]["semantic"], 0.0)
         self.assertTrue(report["matrix"][0][1]["flagged"])
+
+    def test_build_similarity_report_assigns_distinct_highlight_colors(self):
+        submissions = [
+            {"id": 1, "title": "Alpha", "text": "Chunk A. Chunk B. Chunk C. Chunk D."},
+            {"id": 2, "title": "Beta", "text": "Chunk A. Chunk B. Chunk C. Chunk X."},
+        ]
+
+        report = build_similarity_report(submissions)
+        highlights = report["matrix"][0][1]["highlights"]
+
+        self.assertTrue(len(highlights) >= 2)
+        self.assertGreater(len({highlight["color_id"] for highlight in highlights}), 1)
