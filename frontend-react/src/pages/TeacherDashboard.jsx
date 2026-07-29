@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import API from '../services/api';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { Button, Card, Badge, PageHeader, EmptyState, SkeletonCard } from '../components/ui';
 
 const TeacherDashboard = () => {
     const [classrooms, setClassrooms] = useState([]);
     const [assignments, setAssignments] = useState([]);
     const [pendingCount, setPendingCount] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchClassrooms = async () => {
-            const res = await API.get('/api/classroom/classrooms/');
-            setClassrooms(res.data);
+            try {
+                const res = await API.get('/api/classroom/classrooms/');
+                setClassrooms(res.data);
+            } catch (err) {
+                console.error('Error loading classrooms:', err);
+            }
         };
 
         const fetchAssignments = async () => {
@@ -31,88 +38,127 @@ const TeacherDashboard = () => {
             }
         };
 
-        fetchClassrooms();
-        fetchAssignments();
-        fetchPending();
+        const load = async () => {
+            await Promise.all([fetchClassrooms(), fetchAssignments(), fetchPending()]);
+            setLoading(false);
+        };
+        load();
     }, []);
 
+    const gradients = [
+        'from-brand-500 to-brand-700',
+        'from-emerald-500 to-teal-600',
+        'from-amber-500 to-orange-600',
+        'from-pink-500 to-rose-600',
+        'from-sky-500 to-indigo-600',
+    ];
+
     return (
-        <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'Segoe UI, sans-serif' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px', gap: '24px' }}>
-                <div>
-                    <h1 style={{ color: '#111827', fontSize: '3rem', lineHeight: '1.05', margin: 0, fontWeight: 700 }}>Teacher Dashboard</h1>
-                    {pendingCount > 0 && (
-                        <p style={{ margin: '16px 0 0', color: '#b45309', fontSize: '1rem' }}>
-                            You have <strong>{pendingCount}</strong> pending join request{pendingCount === 1 ? '' : 's'}.
-                        </p>
-                    )}
-                </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Link to="/manage-classes" style={{ padding: '12px 28px', background: '#fbbf24', color: '#1f2937', borderRadius: '8px', textDecoration: 'none', fontWeight: '700', boxShadow: '0 4px 12px rgba(251, 191, 36, 0.22)' }}>
-                        Manage Requests{pendingCount > 0 ? ` (${pendingCount})` : ''}
-                    </Link>
-                    <Link to="/create-classroom" style={{ 
-                        padding: '12px 28px', background: '#28a745', color: '#fff', 
-                        borderRadius: '8px', textDecoration: 'none', fontWeight: '700',
-                        boxShadow: '0 4px 12px rgba(40, 167, 69, 0.22)'
-                    }}>
-                        + Create Classroom
-                    </Link>
-                </div>
-            </div>
+        <div className="mx-auto max-w-6xl">
+            <PageHeader
+                title="Teacher Dashboard"
+                subtitle="Manage your classrooms, publish assignments, and review student submissions."
+                actions={
+                    <>
+                        <Button variant="warning" to="/manage-classes">
+                            Manage Requests
+                            {pendingCount > 0 && (
+                                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-950/20 px-1.5 text-xs font-bold">
+                                    {pendingCount}
+                                </span>
+                            )}
+                        </Button>
+                        <Button variant="success" to="/create-classroom">
+                            + Create Classroom
+                        </Button>
+                    </>
+                }
+            />
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '28px', marginBottom: '40px' }}>
-                {classrooms.map(c => (
-                    <div key={c.id} style={{ 
-                        border: '1px solid #d1d5db', borderRadius: '24px', padding: '28px', 
-                        backgroundColor: '#ffffff', boxShadow: '0 16px 40px rgba(15, 23, 42, 0.08)',
-                        minHeight: '220px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
-                    }}>
-                        <div>
-                            <h3 style={{ margin: '0 0 12px 0', color: '#111827', fontSize: '1.3rem' }}>{c.name}</h3>
-                            <p style={{ margin: 0, color: '#475569', fontSize: '0.95rem' }}>Subject: {c.subject}</p>
-                        </div>
-                        <Link to={`/classroom/${c.id}`} style={{ 
-                            alignSelf: 'flex-start',
-                            color: '#1d4ed8',
-                            fontWeight: '700',
-                            textDecoration: 'none',
-                            border: '1px solid #1d4ed8',
-                            padding: '12px 22px',
-                            borderRadius: '9999px',
-                            transition: 'background-color 0.2s ease',
-                            backgroundColor: '#eff6ff'
-                        }}>
-                            Add Assignment
-                        </Link>
-                    </div>
-                ))}
-            </div>
+            {pendingCount > 0 && (
+                <div className="mb-8 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+                    <span className="text-xl" aria-hidden>🔔</span>
+                    <p className="text-sm text-amber-800">
+                        You have <strong>{pendingCount}</strong> pending join request{pendingCount === 1 ? '' : 's'} waiting for review.
+                    </p>
+                </div>
+            )}
 
-            <section style={{ border: '1px solid #e5e7eb', borderRadius: '24px', backgroundColor: '#f8fafc', padding: '34px', boxShadow: '0 20px 45px rgba(15, 23, 42, 0.06)' }}>
-                <h2 style={{ margin: '0 0 16px', color: '#111827' }}>Published Assignments</h2>
-                {assignments.length === 0 ? (
-                    <div style={{ color: '#6b7280', padding: '24px', borderRadius: '18px', backgroundColor: '#f8fafc' }}>
-                        No published assignments yet. Publish assignments from your classrooms to see them here.
-                    </div>
-                ) : (
-                    <div style={{ display: 'grid', gap: '20px' }}>
-                        {assignments.map((assignment) => (
-                            <div key={assignment.id} style={{ border: '1px solid #e2e8f0', borderRadius: '20px', padding: '22px', backgroundColor: '#f9fafb' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                                    <div>
-                                        <h3 style={{ margin: '0 0 8px', color: '#111827', fontSize: '1.1rem' }}>{assignment.title}</h3>
-                                        <p style={{ margin: 0, color: '#475569' }}>{assignment.classroom_name} · {assignment.classroom_subject}</p>
-                                    </div>
-                                    <Link to={`/assignment/${assignment.id}`} style={{ color: '#1d4ed8', fontWeight: '600', textDecoration: 'none' }}>
-                                        View Assignment and Submissions
-                                    </Link>
-                                </div>
+            {/* Classrooms */}
+            <h2 className="mb-4 text-lg font-bold text-ink">Your Classrooms</h2>
+            {loading ? (
+                <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    <SkeletonCard />
+                    <SkeletonCard />
+                    <SkeletonCard />
+                </div>
+            ) : classrooms.length === 0 ? (
+                <EmptyState
+                    className="mb-10"
+                    icon="🏫"
+                    title="No classrooms yet"
+                    description="Create your first classroom to start publishing assignments."
+                    action={<Button to="/create-classroom">+ Create Classroom</Button>}
+                />
+            ) : (
+                <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {classrooms.map((c, i) => (
+                        <Card key={c.id} hover padded={false} className="overflow-hidden">
+                            <div className={`h-24 bg-linear-to-br ${gradients[i % gradients.length]}`} />
+                            <div className="p-6">
+                                <h3 className="text-lg font-bold text-ink">{c.name}</h3>
+                                <p className="mt-1 text-sm text-ink-soft">{c.subject}</p>
+                                <Button
+                                    variant="secondary"
+                                    fullWidth
+                                    className="mt-5"
+                                    onClick={() => navigate(`/classroom/${c.id}`)}
+                                >
+                                    Add Assignment
+                                </Button>
                             </div>
-                        ))}
+                        </Card>
+                    ))}
+                </div>
+            )}
+
+            {/* Published Assignments */}
+            <h2 className="mb-4 text-lg font-bold text-ink">Published Assignments</h2>
+            {loading ? (
+                <Card>
+                    <div className="animate-pulse space-y-3">
+                        <div className="h-5 w-1/3 rounded bg-slate-200/70" />
+                        <div className="h-4 w-1/4 rounded bg-slate-200/70" />
                     </div>
-                )}
-            </section>
+                </Card>
+            ) : assignments.length === 0 ? (
+                <EmptyState
+                    icon="📄"
+                    title="No published assignments yet"
+                    description="Publish assignments from your classrooms to see them here."
+                />
+            ) : (
+                <div className="space-y-4">
+                    {assignments.map((assignment) => (
+                        <Card
+                            key={assignment.id}
+                            hover
+                            className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                            <div>
+                                <h3 className="text-base font-bold text-ink">{assignment.title}</h3>
+                                <p className="mt-1 flex items-center gap-2 text-sm text-ink-soft">
+                                    <Badge variant="brand">{assignment.classroom_name}</Badge>
+                                    <span>{assignment.classroom_subject}</span>
+                                </p>
+                            </div>
+                            <Button variant="ghost" to={`/assignment/${assignment.id}`}>
+                                View submissions →
+                            </Button>
+                        </Card>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

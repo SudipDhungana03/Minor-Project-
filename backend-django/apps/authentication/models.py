@@ -19,6 +19,7 @@ class User(AbstractUser):
     is_verified = models.BooleanField(default=False)
     name = models.CharField(max_length=255, blank=True)
     organization = models.CharField(max_length=255, blank=True)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
 
     def __str__(self):
         return f"{self.username} ({self.role})"

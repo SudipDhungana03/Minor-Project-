@@ -24,19 +24,31 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 # --- Profile Update Serializer ---
 class ProfileSerializer(serializers.ModelSerializer):
+    avatar_url = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = User
         # These fields will be returned/updated via the profile endpoint
-        fields = ['username', 'email', 'role', 'name', 'organization']
-        
+        fields = ['username', 'email', 'role', 'name', 'organization', 'avatar', 'avatar_url']
+
         # Optional: set these to not required so they can be updated one by one
         extra_kwargs = {
             'role': {'required': False},
             'name': {'required': False},
             'organization': {'required': False},
             'email': {'required': False},
-            'username': {'required': False}
+            'username': {'required': False},
+            'avatar': {'required': False, 'write_only': True},
         }
+
+    def get_avatar_url(self, obj):
+        if not getattr(obj, 'avatar', None):
+            return None
+        url = obj.avatar.url
+        request = self.context.get('request')
+        if request is not None:
+            return request.build_absolute_uri(url)
+        return url
 
 # --- Custom Token Serializer for Role-Based Login ---
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):

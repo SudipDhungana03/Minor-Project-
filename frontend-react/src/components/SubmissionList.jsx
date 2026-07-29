@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
+import { Card, Button, Badge, EmptyState } from './ui';
 
 const getMediaUrl = (path) => path?.startsWith('http') ? path : `${API.defaults.baseURL}${path}`;
 
@@ -153,77 +154,86 @@ const SubmissionList = ({ assignmentId }) => {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                <h4 style={{ fontSize: '1.2rem', margin: 0 }}>Student Submissions</h4>
-                <button
-                    onClick={() => setShowBatchModal(true)}
-                    style={{ backgroundColor: '#4338ca', color: '#fff', border: 'none', borderRadius: '10px', padding: '8px 16px', fontWeight: 600, cursor: 'pointer', width: '220px' }}
-                >
-                    Check Plagiarism
-                </button>
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+                <h4 className="text-xl font-bold text-ink m-0">Student submissions</h4>
+                <Button onClick={() => setShowBatchModal(true)}>Check plagiarism</Button>
             </div>
 
             {submissions.length === 0 ? (
-                <div style={{ padding: '16px', color: '#6b7280', backgroundColor: '#f8fafc', borderRadius: '14px' }}>
-                    No submissions have been received yet for this assignment.
-                </div>
+                <EmptyState
+                    title="No submissions yet"
+                    description="Submissions from your students will appear here once they turn in their work."
+                />
             ) : (
-                submissions.map((sub) => (
-                    <div key={sub.id} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', margin: '12px 0', padding: '18px', backgroundColor: '#ffffff' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <input type="checkbox" checked={selectedIds.includes(sub.id)} onChange={() => toggleSelection(sub.id)} />
-                                <p style={{ margin: 0, fontWeight: 600, color: '#111827' }}>Student: {sub.student_username || sub.student}</p>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.95rem' }}>Submitted: {new Date(sub.submitted_at).toLocaleString()}</p>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                                    <button
-                                        onClick={async () => {
-                                            if (analyzing[sub.id]) return;
-                                            setAnalyzing((prev) => ({ ...prev, [sub.id]: true }));
-                                            try {
-                                                const res = await API.post('/api/analyze/', { submission_id: sub.id });
-                                                const report = res.data.report || res.data;
-                                                setAnalysisMap((prev) => ({ ...prev, [sub.id]: report }));
-                                            } catch (err) {
-                                                console.error('Analyze failed for submission', sub.id, err);
-                                            } finally {
-                                                setAnalyzing((prev) => ({ ...prev, [sub.id]: false }));
-                                            }
-                                        }}
-                                        disabled={!!analyzing[sub.id]}
-                                        style={{
-                                            backgroundColor: analyzing[sub.id] ? '#a78bfa' : '#4f46e5',
-                                            color: '#fff',
-                                            padding: '8px 12px',
-                                            borderRadius: '10px',
-                                            border: 'none',
-                                            cursor: analyzing[sub.id] ? 'wait' : 'pointer',
-                                            fontWeight: 600,
-                                            minWidth: '160px'
-                                        }}
-                                    >
-                                        {analyzing[sub.id] ? 'Analyzing...' : 'Analyze for AI Content'}
-                                    </button>
-                                    {analysisMap[sub.id] && (
-                                        <button onClick={() => navigate(`/submission/${sub.id}`)} style={{ background: 'transparent', border: 'none', color: '#4338ca', fontWeight: 700, cursor: 'pointer' }}>
-                                            View analysis
-                                        </button>
-                                    )}
+                <div className="space-y-4">
+                    {submissions.map((sub) => (
+                        <Card key={sub.id} className="!p-5">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4 accent-brand-600"
+                                        checked={selectedIds.includes(sub.id)}
+                                        onChange={() => toggleSelection(sub.id)}
+                                    />
+                                    <p className="m-0 font-semibold text-ink">
+                                        {sub.student_username || sub.student}
+                                    </p>
+                                </div>
+                                <div className="flex flex-col items-end gap-2">
+                                    <p className="m-0 text-sm text-ink-soft">
+                                        {new Date(sub.submitted_at).toLocaleString()}
+                                    </p>
+                                    <div className="flex flex-col items-end gap-2">
+                                        <Button
+                                            size="sm"
+                                            onClick={async () => {
+                                                if (analyzing[sub.id]) return;
+                                                setAnalyzing((prev) => ({ ...prev, [sub.id]: true }));
+                                                try {
+                                                    const res = await API.post('/api/analyze/', { submission_id: sub.id });
+                                                    const report = res.data.report || res.data;
+                                                    setAnalysisMap((prev) => ({ ...prev, [sub.id]: report }));
+                                                } catch (err) {
+                                                    console.error('Analyze failed for submission', sub.id, err);
+                                                } finally {
+                                                    setAnalyzing((prev) => ({ ...prev, [sub.id]: false }));
+                                                }
+                                            }}
+                                            disabled={!!analyzing[sub.id]}
+                                        >
+                                            {analyzing[sub.id] ? 'Analyzing...' : 'Analyze for AI content'}
+                                        </Button>
+                                        {analysisMap[sub.id] && (
+                                            <button
+                                                onClick={() => navigate(`/submission/${sub.id}`)}
+                                                className="bg-transparent border-0 text-brand-600 font-bold cursor-pointer hover:text-brand-700"
+                                            >
+                                                View analysis
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <p style={{ margin: '12px 0 8px', color: '#334155' }}><strong>Description:</strong> {sub.content || 'No description provided.'}</p>
-                        {sub.file ? (
-                            <a href={getMediaUrl(sub.file)} target="_blank" rel="noreferrer" style={{ color: '#4338ca', fontWeight: 600 }}>
-                                Download student attachment
-                            </a>
-                        ) : (
-                            <p style={{ margin: 0, color: '#9ca3af' }}>No file attached.</p>
-                        )}
-                    </div>
-                ))
+                            <p className="mt-3 mb-2 text-ink-soft">
+                                <span className="font-semibold text-ink-muted">Description:</span>{' '}
+                                {sub.content || 'No description provided.'}
+                            </p>
+                            {sub.file ? (
+                                <a
+                                    href={getMediaUrl(sub.file)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="font-semibold text-brand-600 hover:text-brand-700 hover:underline"
+                                >
+                                    Download student attachment
+                                </a>
+                            ) : (
+                                <p className="m-0 text-slate-400">No file attached.</p>
+                            )}
+                        </Card>
+                    ))}
+                </div>
             )}
 
             {showBatchModal && (
@@ -330,28 +340,24 @@ const SubmissionList = ({ assignmentId }) => {
                                     <span style={{ background: '#eef2ff', color: '#3730a3', borderRadius: '999px', padding: '6px 12px', fontSize: '0.85rem', fontWeight: 700 }}>Score: {comparisonPair.cell?.overall_score ?? 0}</span>
                                 </div>
                                 <div style={{ marginTop: '10px', minHeight: '280px', maxHeight: '420px', overflowY: 'auto', lineHeight: 1.75, whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
-                                    {comparisonPair.leftSubmission?.file ? (
-                                        <div>
-                                            {(() => {
-                                                const fileUrl = getMediaUrl(comparisonPair.leftSubmission.file);
-                                                const isPdf = /\.pdf$/i.test(fileUrl);
-                                                if (isPdf) {
-                                                    return <iframe title="left-document" src={fileUrl} style={{ width: '100%', height: '320px', border: '1px solid #e2e8f0', borderRadius: '10px' }} />;
-                                                }
-                                                const leftFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.leftSubmission.id);
-                                                const displayText = leftFile?.text || comparisonPair.leftSubmission?.content || '';
-                                                return <div>{highlightText(displayText, annotateSideHighlights(comparisonPair.cell?.highlights, 'left'))}</div>;
-                                            })()}
-                                        </div>
-                                    ) : (
-                                        <div>
-                                            {(() => {
-                                                const leftFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.leftSubmission.id);
-                                                const displayText = leftFile?.text || comparisonPair.leftSubmission?.content || '';
-                                                return highlightText(displayText, annotateSideHighlights(comparisonPair.cell?.highlights, 'left'));
-                                            })()}
-                                        </div>
-                                    )}
+                                    {(() => {
+                                        // Always render the ORIGINAL document content (extracted text preserving
+                                        // its original arrangement) with the plagiarism highlights applied in place.
+                                        const leftFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.leftSubmission.id);
+                                        const displayText = leftFile?.text || comparisonPair.leftSubmission?.content || '';
+                                        return (
+                                            <div>
+                                                {highlightText(displayText, annotateSideHighlights(comparisonPair.cell?.highlights, 'left'))}
+                                                {comparisonPair.leftSubmission?.file && (
+                                                    <div style={{ marginTop: '10px' }}>
+                                                        <a href={getMediaUrl(comparisonPair.leftSubmission.file)} target="_blank" rel="noreferrer" style={{ color: '#4f46e5', fontWeight: 600, fontSize: '0.85rem' }}>
+                                                            Open original file
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                             <div style={{ border: '1px solid #e2e8f0', borderRadius: '14px', padding: '18px', background: '#f8fafc' }}>
@@ -360,28 +366,23 @@ const SubmissionList = ({ assignmentId }) => {
                                     <span style={{ background: comparisonPair.cell?.verdict === 'High similarity' ? '#fee2e2' : comparisonPair.cell?.verdict === 'Moderate similarity' ? '#fef3c7' : comparisonPair.cell?.verdict === 'Low similarity' ? '#e0f2fe' : '#ecfdf5', color: comparisonPair.cell?.verdict === 'High similarity' ? '#991b1b' : comparisonPair.cell?.verdict === 'Moderate similarity' ? '#92400e' : comparisonPair.cell?.verdict === 'Low similarity' ? '#1d4ed8' : '#065f46', borderRadius: '999px', padding: '6px 12px', fontSize: '0.85rem', fontWeight: 700 }}>{comparisonPair.cell?.verdict}</span>
                                 </div>
                                 <div style={{ marginTop: '10px', minHeight: '280px', maxHeight: '420px', overflowY: 'auto', lineHeight: 1.75, whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
-                                    {comparisonPair.rightSubmission?.file ? (
-                                        <div>
-                                            {(() => {
-                                                const fileUrl = getMediaUrl(comparisonPair.rightSubmission.file);
-                                                const isPdf = /\.pdf$/i.test(fileUrl);
-                                                if (isPdf) {
-                                                    return <iframe title="right-document" src={fileUrl} style={{ width: '100%', height: '320px', border: '1px solid #e2e8f0', borderRadius: '10px' }} />;
-                                                }
-                                                const rightFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.rightSubmission.id);
-                                                const displayText = rightFile?.text || comparisonPair.rightSubmission?.content || '';
-                                                return <div>{highlightText(displayText, annotateSideHighlights(comparisonPair.cell?.highlights, 'right'))}</div>;
-                                            })()}
-                                        </div>
-                                    ) : (
-                                        <div>
-                                            {(() => {
-                                                const rightFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.rightSubmission.id);
-                                                const displayText = rightFile?.text || comparisonPair.rightSubmission?.content || '';
-                                                return highlightText(displayText, annotateSideHighlights(comparisonPair.cell?.highlights, 'right'));
-                                            })()}
-                                        </div>
-                                    )}
+                                    {(() => {
+                                        // Always render the ORIGINAL document content with highlights in place.
+                                        const rightFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.rightSubmission.id);
+                                        const displayText = rightFile?.text || comparisonPair.rightSubmission?.content || '';
+                                        return (
+                                            <div>
+                                                {highlightText(displayText, annotateSideHighlights(comparisonPair.cell?.highlights, 'right'))}
+                                                {comparisonPair.rightSubmission?.file && (
+                                                    <div style={{ marginTop: '10px' }}>
+                                                        <a href={getMediaUrl(comparisonPair.rightSubmission.file)} target="_blank" rel="noreferrer" style={{ color: '#4f46e5', fontWeight: 600, fontSize: '0.85rem' }}>
+                                                            Open original file
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>

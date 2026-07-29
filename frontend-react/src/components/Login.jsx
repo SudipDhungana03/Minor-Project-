@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import API from '../services/api';
-import styles from '../styles/login-signup.module.css';
-import AuthHeader from './AuthHeader';
+import AuthLayout from './AuthLayout';
+import { Button, Input } from './ui';
 
 const Login = () => {
     const [formData, setFormData] = useState({ username: '', password: '' });
     const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -15,14 +16,16 @@ const Login = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setMessage('');
         try {
             const { data } = await API.post('/api/login/', formData);
-            
+
             // Store tokens and role
             localStorage.setItem('access_token', data.access);
             localStorage.setItem('refresh_token', data.refresh);
             localStorage.setItem('role', data.role);
-            
+
             // Notify the app that auth state changed so UI updates without refresh
             try {
                 window.dispatchEvent(new Event('authChanged'));
@@ -30,7 +33,7 @@ const Login = () => {
                 // ignore in older browsers
             }
             setMessage('Login successful! Redirecting...');
-            
+
             // Role-based redirection
             setTimeout(() => {
                 if (data.role === 'student') {
@@ -41,37 +44,51 @@ const Login = () => {
                     navigate('/');
                 }
             }, 1000);
-            
         } catch (error) {
             console.error('Login error:', error);
             const serverMsg = error.response?.data?.detail || 'Invalid username or password.';
             setMessage(serverMsg);
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className={styles.authContainer}>
-            <form className={styles.authCard} onSubmit={handleSubmit}>
-                <AuthHeader />
-                <h3 style={{ textAlign: 'center', color: '#444', marginBottom: '20px' }}>
-                    Welcome back
-                </h3>
-                
-                <input 
-                    className={styles.inputField} 
-                    type="text" name="username" placeholder="Username" 
-                    onChange={handleChange} required 
+        <AuthLayout title="Welcome back" subtitle="Log in to continue to your dashboard.">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <Input
+                    label="Username"
+                    type="text"
+                    name="username"
+                    placeholder="Enter your username"
+                    onChange={handleChange}
+                    required
                 />
-                <input 
-                    className={styles.inputField} 
-                    type="password" name="password" placeholder="Password" 
-                    onChange={handleChange} required 
+                <Input
+                    label="Password"
+                    type="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    onChange={handleChange}
+                    required
                 />
-                
-                <button className={styles.submitBtn} type="submit">Login</button>
-                {message && <p className={styles.message}>{message}</p>}
+
+                <Button type="submit" fullWidth size="lg" disabled={loading}>
+                    {loading ? 'Signing in…' : 'Log in'}
+                </Button>
+
+                {message && (
+                    <p className="text-center text-sm text-ink-muted">{message}</p>
+                )}
             </form>
-        </div>
+
+            <p className="mt-6 text-center text-sm text-ink-soft">
+                Don't have an account?{' '}
+                <Link to="/signup" className="font-semibold text-brand-700 hover:text-brand-800">
+                    Sign up
+                </Link>
+            </p>
+        </AuthLayout>
     );
 };
 

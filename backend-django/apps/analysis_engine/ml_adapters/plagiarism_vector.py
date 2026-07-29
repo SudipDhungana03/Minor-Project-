@@ -64,19 +64,78 @@ def _split_sentences(paragraph):
     return sentences if sentences else [paragraph.strip()]
 
 
-def _build_chunks_from_paragraphs(paragraphs):
-    """Build chunks from paragraphs using a paragraph-first strategy.
+# --- Chunking configuration -------------------------------------------------
+# Fallback chunk sizing when real paragraphs are not recognizable.
+SENTENCES_PER_CHUNK = 4          # ~4 sentences per generated chunk
+WORDS_PER_CHUNK = 100            # ...or ~100 words, whichever comes first
+# Overlap window used ONLY to give each generated chunk more context for
+# scoring. The overlap is NEVER highlighted/displayed.
+OVERLAP_SENTENCES = 2            # 1-2 sentences of context above/below
+OVERLAP_WORDS = 40               # ~25-50 words of context above/below
+# A recognizable paragraph larger than this many sentences is treated as an
+# unstructured block and re-chunked with the sentence/word fallback.
+LARGE_PARAGRAPH_SENTENCES = 8
 
-    Rules implemented:
-    - If a paragraph has <= 5 sentences, treat the whole paragraph as a single chunk.
-    - If a paragraph has > 5 sentences, split it into non-overlapping chunks of
-      5 sentences (no overlap) to avoid context duplication/jumbling.
-    - If the WHOLE document is a single paragraph (no double-newline splits),
-      use an overlapping sliding window so context is preserved across chunk
-      boundaries. Window defaults to 5 sentences with a step of 3.
+
+def _fallback_sentence_groups(sentences):
+    """Group a flat list of sentences into core windows of ~4 sentences /
+    ~100 words. Returns a list of (start_idx, end_idx) tuples (end exclusive)."""
+    groups = []
+    n = len(sentences)
+    i = 0
+    while i < n:
+        start = i
+        word_count = 0
+        count = 0
+        while i < n and count < SENTENCES_PER_CHUNK and word_count < WORDS_PER_CHUNK:
+            word_count += len(sentences[i].split())
+            count += 1
+            i += 1
+        groups.append((start, i))
+    return groups
+
+
+def _context_prefix(sentences, start):
+    """Build overlap context (before the core) limited by sentence/word caps."""
+    words_used = 0
+    picked = []
+    for idx in range(start - 1, -1, -1):
+        if len(picked) >= OVERLAP_SENTENCES or words_used >= OVERLAP_WORDS:
+            break
+        picked.append(sentences[idx])
+        words_used += len(sentences[idx].split())
+    return ' '.join(reversed(picked)).strip()
+
+
+def _context_suffix(sentences, end):
+    """Build overlap context (after the core) limited by sentence/word caps."""
+    words_used = 0
+    picked = []
+    for idx in range(end, len(sentences)):
+        if len(picked) >= OVERLAP_SENTENCES or words_used >= OVERLAP_WORDS:
+            break
+        picked.append(sentences[idx])
+        words_used += len(sentences[idx].split())
+    return ' '.join(picked).strip()
+
+
+def _build_chunks_from_paragraphs(paragraphs):
+    """Paragraph-first chunking.
+
+    Rules implemented (per project requirement):
+    - Each recognizable paragraph is treated as ONE chunk.
+    - When paragraphs/points are not recognizable (single-paragraph document)
+      OR a paragraph is an unusually large block, split it into generated
+      chunks of ~4 sentences / ~100 words.
+    - For those generated chunks, an overlap window of 1-2 sentences / 25-50
+      words above and below is attached to the ``compare_text`` so the chunk
+      keeps its surrounding meaning during scoring. The overlap is deliberately
+      excluded from ``core_text`` so highlighting/display only covers the real
+      chunk content.
+
+    Returns a list of dicts: ``{'core_text', 'compare_text'}``.
     """
     chunks = []
-    # detect single-paragraph documents (no real paragraph breaks)
     single_paragraph_doc = len(paragraphs) == 1
 
     for paragraph in paragraphs:
@@ -84,27 +143,24 @@ def _build_chunks_from_paragraphs(paragraphs):
         if not sentences:
             continue
 
-        # short paragraphs: keep intact
-        if len(sentences) <= 5 and not single_paragraph_doc:
-            chunks.append(paragraph.strip())
+        recognizable_paragraph = not single_paragraph_doc and len(sentences) <= LARGE_PARAGRAPH_SENTENCES
+
+        if recognizable_paragraph:
+            # Whole paragraph = one chunk, no overlap needed.
+            text = paragraph.strip()
+            chunks.append({'core_text': text, 'compare_text': text})
             continue
 
-        # If it's a single large paragraph document, use overlapping windows
-        if single_paragraph_doc:
-            window_size = 5
-            step_size = 3
-            for start in range(0, len(sentences), step_size):
-                chunk_sentences = sentences[start:start + window_size]
-                if chunk_sentences:
-                    chunks.append(' '.join(chunk_sentences).strip())
-            continue
-
-        # Multi-paragraph document, long paragraph: split into non-overlapping groups
-        window_size = 5
-        for start in range(0, len(sentences), window_size):
-            chunk_sentences = sentences[start:start + window_size]
-            if chunk_sentences:
-                chunks.append(' '.join(chunk_sentences).strip())
+        # Unstructured / large block: generate 4-sentence / 100-word chunks
+        # with an overlap window used only for scoring context.
+        for start, end in _fallback_sentence_groups(sentences):
+            core_text = ' '.join(sentences[start:end]).strip()
+            if not core_text:
+                continue
+            prefix = _context_prefix(sentences, start)
+            suffix = _context_suffix(sentences, end)
+            compare_text = ' '.join(part for part in (prefix, core_text, suffix) if part).strip()
+            chunks.append({'core_text': core_text, 'compare_text': compare_text})
 
     return chunks
 
@@ -282,8 +338,26 @@ def _comparison_verdict(score):
     return 'Clear'
 
 
+def _chunk_core(chunk):
+    """Return the display/highlight text for a chunk (no overlap window)."""
+    if isinstance(chunk, dict):
+        return chunk.get('core_text', '')
+    return chunk
+
+
+def _chunk_compare(chunk):
+    """Return the scoring text for a chunk (may include overlap context)."""
+    if isinstance(chunk, dict):
+        return chunk.get('compare_text') or chunk.get('core_text', '')
+    return chunk
+
+
 def _compare_chunks(left_chunks, right_chunks):
     """Compare chunks between two documents and return detailed chunk-level analysis.
+
+    Scoring is performed on each chunk's ``compare_text`` (which may include the
+    overlap window for context), while the stored preview text uses the
+    ``core_text`` so downstream highlighting only covers the real chunk content.
 
     Returns:
         - chunk_matches: List of matching chunks with their scores and color IDs
@@ -291,10 +365,14 @@ def _compare_chunks(left_chunks, right_chunks):
     candidates = []
 
     for left_idx, left_chunk in enumerate(left_chunks):
+        left_compare = _chunk_compare(left_chunk)
+        left_core = _chunk_core(left_chunk)
         for right_idx, right_chunk in enumerate(right_chunks):
-            jaccard = _jaccard_similarity(left_chunk, right_chunk)
-            tfidf = _tfidf_similarity(left_chunk, right_chunk)
-            semantic = _semantic_similarity(left_chunk, right_chunk)
+            right_compare = _chunk_compare(right_chunk)
+            right_core = _chunk_core(right_chunk)
+            jaccard = _jaccard_similarity(left_compare, right_compare)
+            tfidf = _tfidf_similarity(left_compare, right_compare)
+            semantic = _semantic_similarity(left_compare, right_compare)
             is_match = jaccard >= 0.15 or tfidf >= 0.15 or semantic >= 0.12
             if not is_match:
                 continue
@@ -303,8 +381,8 @@ def _compare_chunks(left_chunks, right_chunks):
             candidates.append({
                 'left_chunk_idx': left_idx,
                 'right_chunk_idx': right_idx,
-                'left_text': left_chunk[:200],
-                'right_text': right_chunk[:200],
+                'left_text': left_core[:200],
+                'right_text': right_core[:200],
                 'scores': {
                     'jaccard': jaccard,
                     'tfidf': tfidf,
@@ -368,9 +446,14 @@ def _find_chunk_positions(text, chunks):
 
 
 def _build_chunk_highlights(left_text, left_chunks, right_text, right_chunks, chunk_matches):
-    """Build highlight ranges for matching chunks."""
-    left_positions = _find_chunk_positions(left_text, left_chunks)
-    right_positions = _find_chunk_positions(right_text, right_chunks)
+    """Build highlight ranges for matching chunks.
+
+    Positions are computed from each chunk's CORE text only, so the highlight in
+    the original document covers exactly the chunk content and never the overlap
+    context window used for scoring.
+    """
+    left_positions = _find_chunk_positions(left_text, [_chunk_core(c) for c in left_chunks])
+    right_positions = _find_chunk_positions(right_text, [_chunk_core(c) for c in right_chunks])
     
     highlights = []
     

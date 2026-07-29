@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import API from '../services/api';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { Button, Card, Input, PageHeader, EmptyState, SkeletonCard } from '../components/ui';
 
 const StudentDashboard = () => {
     const [classrooms, setClassrooms] = useState([]);
     const [joinCode, setJoinCode] = useState('');
+    const [joining, setJoining] = useState(false);
+    const [feedback, setFeedback] = useState(null);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
     const fetchClassrooms = async () => {
         try {
@@ -26,58 +30,93 @@ const StudentDashboard = () => {
 
     const handleJoin = async (e) => {
         e.preventDefault();
+        setJoining(true);
+        setFeedback(null);
         try {
             await API.post('/api/classroom/classrooms/join/', { invite_code: joinCode.trim() });
-            alert('Join request submitted. Check with your teacher for approval.');
+            setFeedback({ type: 'success', text: 'Join request submitted. Your teacher will approve it soon.' });
             setJoinCode('');
         } catch (err) {
             console.error('Error joining classroom:', err);
             const message = err.response?.data?.error || err.response?.data?.message || 'Invalid invite code or request failed.';
-            alert(message);
+            setFeedback({ type: 'error', text: message });
+        } finally {
+            setJoining(false);
         }
     };
 
+    const gradients = [
+        'from-brand-500 to-brand-700',
+        'from-emerald-500 to-teal-600',
+        'from-amber-500 to-orange-600',
+        'from-pink-500 to-rose-600',
+        'from-sky-500 to-indigo-600',
+    ];
+
     return (
-        <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'Segoe UI, sans-serif' }}>
-            <header style={{ marginBottom: '40px' }}>
-                <h1 style={{ color: '#333', fontSize: '2rem' }}>My Classrooms</h1>
-                <p style={{ color: '#666' }}>Welcome back! Select a classroom to view your assignments and submit work.</p>
-            </header>
+        <div className="mx-auto max-w-6xl">
+            <PageHeader
+                title="My Classrooms"
+                subtitle="Welcome back! Select a classroom to view assignments and submit your work."
+            />
 
-            <section style={{ marginBottom: '30px', padding: '24px', borderRadius: '16px', backgroundColor: '#fff', border: '1px solid #e2e8f0' }}>
-                <h2 style={{ margin: 0, color: '#2c3e50' }}>Join a classroom</h2>
-                <form onSubmit={handleJoin} style={{ marginTop: '18px', display: 'grid', gap: '14px' }}>
-                    <input
-                        value={joinCode}
-                        onChange={(e) => setJoinCode(e.target.value)}
-                        placeholder="Enter classroom code"
-                        required
-                        style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none' }}
-                    />
-                    <button type="submit" style={{ width: 'fit-content', padding: '12px 20px', backgroundColor: '#2563eb', color: '#fff', borderRadius: '12px', border: 'none', cursor: 'pointer' }}>
-                        Request Join
-                    </button>
+            {/* Join a classroom */}
+            <Card className="mb-8">
+                <h2 className="text-lg font-bold text-ink">Join a classroom</h2>
+                <p className="mt-1 text-sm text-ink-soft">
+                    Enter the invite code your teacher shared with you.
+                </p>
+                <form onSubmit={handleJoin} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <div className="flex-1">
+                        <Input
+                            value={joinCode}
+                            onChange={(e) => setJoinCode(e.target.value)}
+                            placeholder="Enter classroom code"
+                            required
+                        />
+                    </div>
+                    <Button type="submit" disabled={joining}>
+                        {joining ? 'Sending…' : 'Request Join'}
+                    </Button>
                 </form>
-            </section>
+                {feedback && (
+                    <p className={`mt-3 text-sm ${feedback.type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {feedback.text}
+                    </p>
+                )}
+            </Card>
 
-            {loading ? <p>Loading your courses...</p> : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px' }}>
-                    {classrooms.map(c => (
-                        <div key={c.id} style={{ 
-                            border: '1px solid #e1e4e8', borderRadius: '12px', padding: '24px', 
-                            backgroundColor: '#fff', boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-                            display: 'flex', flexDirection: 'column', gap: '10px'
-                        }}>
-                            <h3 style={{ margin: 0, color: '#2c3e50' }}>{c.name}</h3>
-                            <p style={{ margin: 0, color: '#7f8c8d' }}>Subject: {c.subject}</p>
-                            <Link to="/assignments" style={{ 
-                                marginTop: '15px', padding: '10px', backgroundColor: '#007acc', 
-                                color: '#fff', borderRadius: '6px', textDecoration: 'none', 
-                                textAlign: 'center', fontWeight: '600' 
-                            }}>
-                                View Assignments →
-                            </Link>
-                        </div>
+            {/* Classroom grid */}
+            {loading ? (
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    <SkeletonCard />
+                    <SkeletonCard />
+                    <SkeletonCard />
+                </div>
+            ) : classrooms.length === 0 ? (
+                <EmptyState
+                    icon="🎓"
+                    title="No classrooms yet"
+                    description="Once you join a classroom with an invite code, it will appear here."
+                />
+            ) : (
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {classrooms.map((c, i) => (
+                        <Card key={c.id} hover padded={false} className="overflow-hidden">
+                            <div className={`h-24 bg-linear-to-br ${gradients[i % gradients.length]}`} />
+                            <div className="p-6">
+                                <h3 className="text-lg font-bold text-ink">{c.name}</h3>
+                                <p className="mt-1 text-sm text-ink-soft">{c.subject}</p>
+                                <Button
+                                    variant="secondary"
+                                    fullWidth
+                                    className="mt-5"
+                                    onClick={() => navigate('/assignments')}
+                                >
+                                    View Assignments →
+                                </Button>
+                            </div>
+                        </Card>
                     ))}
                 </div>
             )}

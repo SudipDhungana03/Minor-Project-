@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import API from '../services/api';
 import { useNavigate } from 'react-router-dom';
-import styles from '../styles/login-signup.module.css';
+import AuthLayout from './AuthLayout.jsx';
+import { Input, Button } from './ui';
 
 const CompleteProfile = () => {
     const [profile, setProfile] = useState({ role: 'student', name: '', organization: '' });
     const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -18,6 +20,7 @@ const CompleteProfile = () => {
             return;
         }
 
+        setLoading(true);
         try {
             await API.patch('/api/user/profile/', profile, {
                 headers: {
@@ -45,48 +48,65 @@ const CompleteProfile = () => {
             }
 
             setMessage(errData?.detail || errData?.error || 'Could not update profile. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className={styles.authContainer}>
-            <form className={styles.authCard} onSubmit={handleSubmit}>
-                <h2>Complete Profile</h2>
-                
-                {/* Role selection */}
-                <select
-                    className={styles.inputField}
-                    value={profile.role}
-                    onChange={(e) => setProfile({ ...profile, role: e.target.value })}
-                >
-                    <option value="student">Student</option>
-                    <option value="teacher">Teacher</option>
-                </select>
+        <AuthLayout
+            title="Complete your profile"
+            subtitle="Tell us a little about you so we can tailor your workspace."
+        >
+            <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="w-full">
+                    <label
+                        htmlFor="role"
+                        className="block text-sm font-medium text-ink-muted mb-1.5"
+                    >
+                        I am a
+                    </label>
+                    <select
+                        id="role"
+                        value={profile.role}
+                        onChange={(e) => setProfile({ ...profile, role: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-ink
+                            transition-all duration-200 outline-none focus:border-brand-500 focus:shadow-ring"
+                    >
+                        <option value="student">Student</option>
+                        <option value="teacher">Teacher</option>
+                    </select>
+                </div>
 
-                {/* Name Input */}
-                <input
-                    className={styles.inputField}
+                <Input
+                    label="Full name"
+                    name="name"
                     type="text"
-                    placeholder="Full Name"
+                    placeholder="Jane Doe"
                     value={profile.name}
                     onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                     required
                 />
 
-                {/* Organization Input */}
-                <input
-                    className={styles.inputField}
+                <Input
+                    label="University / Organization"
+                    name="organization"
                     type="text"
-                    placeholder="University/Organization"
+                    placeholder="e.g. Springfield University"
                     value={profile.organization}
                     onChange={(e) => setProfile({ ...profile, organization: e.target.value })}
                     required
                 />
 
-                <button className={styles.submitBtn} type="submit">Complete</button>
-                {message && <p className={styles.message}>{message}</p>}
+                <Button type="submit" fullWidth size="lg" disabled={loading}>
+                    {loading ? 'Saving...' : 'Complete profile'}
+                </Button>
+
+                {message && (
+                    <p className="text-sm text-rose-600 text-center">{message}</p>
+                )}
             </form>
-        </div>
+        </AuthLayout>
     );
 };
 

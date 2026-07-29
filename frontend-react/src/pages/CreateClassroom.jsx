@@ -1,51 +1,73 @@
 import React, { useState } from 'react';
 import API from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import { Card, Input, Button } from '../components/ui';
 
 const CreateClassroom = () => {
   const [name, setName] = useState('');
   const [subject, setSubject] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
     try {
       await API.post('/api/classroom/classrooms/', { name, subject });
-      alert("Classroom created!");
       navigate('/teacher-dashboard');
     } catch (err) {
-      alert("Error creating classroom.");
+      setError('Could not create the classroom. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-[80vh] bg-gray-50">
-      <form onSubmit={handleSubmit} className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Create Classroom</h2>
-        <p className="text-gray-500 mb-8">Set up your new learning environment.</p>
+    <div className="mx-auto flex min-h-[70vh] max-w-lg items-center px-4 py-10">
+      <Card className="w-full">
+        <h1 className="text-2xl font-extrabold text-ink">Create classroom</h1>
+        <p className="mt-1.5 mb-8 text-ink-soft">
+          Set up a new space for your students and assignments.
+        </p>
 
-        <div className="mb-5">
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Class Name</label>
-          <input 
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <Input
+            label="Class name"
+            name="name"
             placeholder="e.g. Advanced Calculus"
-            value={name} onChange={(e) => setName(e.target.value)} required 
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
           />
-        </div>
 
-        <div className="mb-8">
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Subject</label>
-          <input 
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+          <Input
+            label="Subject"
+            name="subject"
             placeholder="e.g. Mathematics"
-            value={subject} onChange={(e) => setSubject(e.target.value)} required 
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            required
           />
-        </div>
 
-        <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-200">
-          Create Classroom
-        </button>
-      </form>
+          {error && <p className="text-sm text-rose-600">{error}</p>}
+
+          <div className="flex items-center gap-3 pt-1">
+            <Button type="submit" size="lg" disabled={loading}>
+              {loading ? 'Creating...' : 'Create classroom'}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="lg"
+              onClick={() => navigate('/teacher-dashboard')}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </Card>
     </div>
   );
 };
