@@ -63,6 +63,22 @@ const highlightText = (text, highlights = []) => {
     return <>{parts}</>;
 };
 
+const annotateSideHighlights = (highlights, side) => {
+    return (highlights || [])
+        .map((item) => {
+            if (!item || !item[side]) return null;
+            return {
+                start: item[side].start,
+                end: item[side].end,
+                color_id: item.color_id,
+                jaccard: item.jaccard,
+                tfidf: item.tfidf,
+                semantic: item.semantic,
+            };
+        })
+        .filter(Boolean);
+};
+
 const SubmissionList = ({ assignmentId }) => {
     const [submissions, setSubmissions] = useState([]);
     const [analyzing, setAnalyzing] = useState({});
@@ -314,7 +330,7 @@ const SubmissionList = ({ assignmentId }) => {
                                                 }
                                                 const leftFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.leftSubmission.id);
                                                 const displayText = leftFile?.text || comparisonPair.leftSubmission?.content || '';
-                                                return <div>{highlightText(displayText, comparisonPair.cell?.highlights?.map((item) => item.left) || [])}</div>;
+                                                return <div>{highlightText(displayText, annotateSideHighlights(comparisonPair.cell?.highlights, 'left'))}</div>;
                                             })()}
                                         </div>
                                     ) : (
@@ -322,7 +338,7 @@ const SubmissionList = ({ assignmentId }) => {
                                             {(() => {
                                                 const leftFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.leftSubmission.id);
                                                 const displayText = leftFile?.text || comparisonPair.leftSubmission?.content || '';
-                                                return highlightText(displayText, comparisonPair.cell?.highlights?.map((item) => item.left) || []);
+                                                return highlightText(displayText, annotateSideHighlights(comparisonPair.cell?.highlights, 'left'));
                                             })()}
                                         </div>
                                     )}
@@ -344,7 +360,7 @@ const SubmissionList = ({ assignmentId }) => {
                                                 }
                                                 const rightFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.rightSubmission.id);
                                                 const displayText = rightFile?.text || comparisonPair.rightSubmission?.content || '';
-                                                return <div>{highlightText(displayText, comparisonPair.cell?.highlights?.map((item) => item.right) || [])}</div>;
+                                                return <div>{highlightText(displayText, annotateSideHighlights(comparisonPair.cell?.highlights, 'right'))}</div>;
                                             })()}
                                         </div>
                                     ) : (
@@ -352,7 +368,7 @@ const SubmissionList = ({ assignmentId }) => {
                                             {(() => {
                                                 const rightFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.rightSubmission.id);
                                                 const displayText = rightFile?.text || comparisonPair.rightSubmission?.content || '';
-                                                return highlightText(displayText, comparisonPair.cell?.highlights?.map((item) => item.right) || []);
+                                                return highlightText(displayText, annotateSideHighlights(comparisonPair.cell?.highlights, 'right'));
                                             })()}
                                         </div>
                                     )}
