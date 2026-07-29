@@ -271,6 +271,16 @@ def _semantic_similarity(left_text, right_text):
     return round(numerator / denominator, 3)
 
 
+def _comparison_verdict(score):
+    if score >= 0.65:
+        return 'High similarity'
+    if score >= 0.4:
+        return 'Moderate similarity'
+    if score >= 0.2:
+        return 'Low similarity'
+    return 'Clear'
+
+
 def _compare_chunks(left_chunks, right_chunks):
     """Compare chunks between two documents and return detailed chunk-level analysis.
     
@@ -313,20 +323,20 @@ def _compare_chunks(left_chunks, right_chunks):
         left_idx = match['left_chunk_idx']
         right_idx = match['right_chunk_idx']
         
-        # Check if these chunks already have a color assigned
-        left_color = highlight_map.get(('left', left_idx))
-        right_color = highlight_map.get(('right', right_idx))
+        # Use explicit None checks because color 0 should still be valid.
+        left_color = highlight_map.get(('left', left_idx), None)
+        right_color = highlight_map.get(('right', right_idx), None)
         
-        if left_color and right_color and left_color != right_color:
+        if left_color is not None and right_color is not None and left_color != right_color:
             # Merge colors - use the smaller one
             merge_to = min(left_color, right_color)
             merge_from = max(left_color, right_color)
             for key in list(highlight_map.keys()):
                 if highlight_map[key] == merge_from:
                     highlight_map[key] = merge_to
-        elif left_color:
+        elif left_color is not None:
             highlight_map[('right', right_idx)] = left_color
-        elif right_color:
+        elif right_color is not None:
             highlight_map[('left', left_idx)] = right_color
         else:
             # Assign new color
@@ -398,11 +408,86 @@ def _build_chunk_highlights(left_text, left_chunks, right_text, right_chunks, ch
     return highlights
 
 
+def _sentence_spans(text):
+    """Split text into sentences, returning each sentence with its char start/end
+    positions in the ORIGINAL text so highlighting preserves the exact arrangement."""
+    spans = []
+    if not text:
+        return spans
+    # Match sentences ending with ., !, ? or the final trailing segment
+    for match in re.finditer(r'[^.!?\n]+[.!?]?', text):
+        segment = match.group()
+        if segment.strip():
+            spans.append({
+                'text': segment.strip(),
+                'start': match.start() + (len(segment) - len(segment.lstrip())),
+                'end': match.end() - (len(segment) - len(segment.rstrip())),
+            })
+    return spans
+
+
+def _build_sentence_highlights(left_text, right_text):
+    """Match sentences between the two documents and assign each matched pair a
+    distinct color id. Reordered sentences still match because comparison is
+    all-pairs and position-independent. Returns highlight ranges preserving the
+    original text arrangement, each carrying its own color + per-pair scores."""
+    left_spans = _sentence_spans(left_text)
+    right_spans = _sentence_spans(right_text)
+
+    highlights = []
+    color_id = 0
+    used_right = set()
+
+    for left_span in left_spans:
+        left_tokens = set(_tokenize(left_span['text']))
+        if not left_tokens:
+            continue
+
+        best = None
+        best_score = 0.0
+        for r_idx, right_span in enumerate(right_spans):
+            if r_idx in used_right:
+                continue
+            right_tokens = set(_tokenize(right_span['text']))
+            if not right_tokens:
+                continue
+            overlap = len(left_tokens & right_tokens)
+            if overlap == 0:
+                continue
+            union = len(left_tokens | right_tokens)
+            jaccard = overlap / union if union else 0.0
+            if jaccard > best_score:
+                best_score = jaccard
+                best = (r_idx, right_span, right_tokens)
+
+        # Threshold: sentences sharing enough tokens are considered similar chunks
+        if best and best_score >= 0.3:
+            r_idx, right_span, right_tokens = best
+            used_right.add(r_idx)
+
+            semantic = _semantic_similarity(left_span['text'], right_span['text'])
+            tfidf = _tfidf_similarity(left_span['text'], right_span['text'])
+
+            highlights.append({
+                'left': {'start': left_span['start'], 'end': left_span['end']},
+                'right': {'start': right_span['start'], 'end': right_span['end']},
+                'color_id': color_id,
+                'text': left_span['text'][:200],
+                'jaccard': round(best_score, 3),
+                'tfidf': round(tfidf, 3),
+                'semantic': round(semantic, 3),
+            })
+            color_id += 1
+
+    return highlights
+
+
 def _extract_sentences(text):
     if not text:
         return []
     sentences = [sentence.strip() for sentence in re.split(r'(?<=[.!?])\s+', text) if sentence.strip()]
     return sentences[:8]
+
 
 
 def _find_shared_snippets(left_text, right_text):
@@ -488,34 +573,44 @@ def build_similarity_report(submissions):
             left_chunks = _build_chunks_from_paragraphs(left_paragraphs)
             right_chunks = _build_chunks_from_paragraphs(right_paragraphs)
             
-            # Compare chunks
+            # Compare chunks (kept for scoring / flagging)
             chunk_matches, highlight_map = _compare_chunks(left_chunks, right_chunks)
-            
-            # Build highlights with color mapping
+
+            # Build chunk-based highlights first, which preserve the same color
+            # for matching chunks on both sides. Fall back to sentence-level
+            # matches only when chunk-level matches are absent.
             highlights = _build_chunk_highlights(
-                left_text, left_chunks,
-                right_text, right_chunks,
-                chunk_matches, highlight_map
-            )
-            
-            # Calculate overall document similarity from chunk matches
+                left_text,
+                left_chunks,
+                right_text,
+                right_chunks,
+                chunk_matches,
+                highlight_map,
+            ) if chunk_matches else _build_sentence_highlights(left_text, right_text)
+
+            # Calculate overall document similarity — always use full-document metrics
+            # so reordered/paraphrased content is still detected accurately
+            doc_jaccard = _jaccard_similarity(left_text, right_text)
+            doc_tfidf = _tfidf_similarity(left_text, right_text)
+            doc_semantic = _semantic_similarity(left_text, right_text)
+
+            # If chunk matches exist, take the max of doc-level and best-chunk scores
             if chunk_matches:
-                avg_jaccard = sum(m['scores']['jaccard'] for m in chunk_matches) / len(chunk_matches)
-                avg_tfidf = sum(m['scores']['tfidf'] for m in chunk_matches) / len(chunk_matches)
-                avg_semantic = sum(m['scores']['semantic'] for m in chunk_matches) / len(chunk_matches)
+                best_jaccard = max(m['scores']['jaccard'] for m in chunk_matches)
+                best_tfidf = max(m['scores']['tfidf'] for m in chunk_matches)
+                best_semantic = max(m['scores']['semantic'] for m in chunk_matches)
+                jaccard = round(max(doc_jaccard, best_jaccard), 3)
+                tfidf = round(max(doc_tfidf, best_tfidf), 3)
+                semantic = round(max(doc_semantic, best_semantic), 3)
             else:
-                avg_jaccard = _jaccard_similarity(left_text, right_text)
-                avg_tfidf = _tfidf_similarity(left_text, right_text)
-                avg_semantic = _semantic_similarity(left_text, right_text)
+                jaccard = round(doc_jaccard, 3)
+                tfidf = round(doc_tfidf, 3)
+                semantic = round(doc_semantic, 3)
             
-            jaccard = round(avg_jaccard, 3)
-            tfidf = round(avg_tfidf, 3)
-            semantic = round(avg_semantic, 3)
-            
+            overall_score = round((jaccard + tfidf + semantic) / 3, 3)
+            verdict = _comparison_verdict(overall_score)
             flagged = any([
-                jaccard >= 0.2,
-                tfidf >= 0.2,
-                semantic >= 0.15,
+                overall_score >= 0.2,
                 bool(chunk_matches),
             ])
 
@@ -523,6 +618,8 @@ def build_similarity_report(submissions):
                 'submission_id': right_submission['id'],
                 'submission_title': right_submission.get('title') or right_submission.get('student_name') or 'Submission',
                 'scores': {'jaccard': jaccard, 'tfidf': tfidf, 'semantic': semantic},
+                'overall_score': overall_score,
+                'verdict': verdict,
                 'flagged': flagged,
                 'chunk_matches': chunk_matches,
                 'highlights': highlights,

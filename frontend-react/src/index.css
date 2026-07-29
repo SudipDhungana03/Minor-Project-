@@ -36,4 +36,31 @@
 	box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
 
+.highlight-tooltip {
+	position: relative;
+}
+
+.highlight-tooltip::after {
+	content: attr(data-tooltip);
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%) translateY(-8px);
+	background: rgba(15, 23, 42, 0.92);
+	color: #ffffff;
+	padding: 6px 10px;
+	border-radius: 8px;
+	font-size: 12px;
+	white-space: nowrap;
+	opacity: 0;
+	pointer-events: none;
+	z-index: 50;
+	transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.highlight-tooltip:hover::after {
+	opacity: 1;
+	transform: translateX(-50%) translateY(-12px);
+}
+
 /* End of AI highlight styles */
