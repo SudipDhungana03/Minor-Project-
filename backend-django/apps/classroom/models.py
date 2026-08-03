@@ -66,6 +66,9 @@ class Submission(models.Model):
     file = models.FileField(upload_to='submissions/', blank=True, null=True) # For file upload
     extracted_text = models.TextField(blank=True, null=True) # Cached extracted text from files for faster analysis
     submitted_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('assignment', 'student')
 
     def __str__(self):
         return f"Submission by {self.student.username} for {self.assignment.title}"

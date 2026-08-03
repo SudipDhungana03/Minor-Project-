@@ -64,47 +64,104 @@ def _split_sentences(paragraph):
     return sentences if sentences else [paragraph.strip()]
 
 
-def _build_chunks_from_paragraphs(paragraphs):
-    """Build chunks from paragraphs using the same logic as AI detector."""
-    chunks = []
-    buffer = []
+# --- Chunking configuration -------------------------------------------------
+# Fallback chunk sizing when real paragraphs are not recognizable.
+SENTENCES_PER_CHUNK = 4          # ~4 sentences per generated chunk
+WORDS_PER_CHUNK = 100            # ...or ~100 words, whichever comes first
+# Overlap window used ONLY to give each generated chunk more context for
+# scoring. The overlap is NEVER highlighted/displayed.
+OVERLAP_SENTENCES = 2            # 1-2 sentences of context above/below
+OVERLAP_WORDS = 40               # ~25-50 words of context above/below
+# A recognizable paragraph larger than this many sentences is treated as an
+# unstructured block and re-chunked with the sentence/word fallback.
+LARGE_PARAGRAPH_SENTENCES = 8
 
-    def flush_buffer():
-        nonlocal buffer
-        if buffer:
-            chunks.append(' '.join(buffer).strip())
-            buffer = []
+
+def _fallback_sentence_groups(sentences):
+    """Group a flat list of sentences into core windows of ~4 sentences /
+    ~100 words. Returns a list of (start_idx, end_idx) tuples (end exclusive)."""
+    groups = []
+    n = len(sentences)
+    i = 0
+    while i < n:
+        start = i
+        word_count = 0
+        count = 0
+        while i < n and count < SENTENCES_PER_CHUNK and word_count < WORDS_PER_CHUNK:
+            word_count += len(sentences[i].split())
+            count += 1
+            i += 1
+        groups.append((start, i))
+    return groups
+
+
+def _context_prefix(sentences, start):
+    """Build overlap context (before the core) limited by sentence/word caps."""
+    words_used = 0
+    picked = []
+    for idx in range(start - 1, -1, -1):
+        if len(picked) >= OVERLAP_SENTENCES or words_used >= OVERLAP_WORDS:
+            break
+        picked.append(sentences[idx])
+        words_used += len(sentences[idx].split())
+    return ' '.join(reversed(picked)).strip()
+
+
+def _context_suffix(sentences, end):
+    """Build overlap context (after the core) limited by sentence/word caps."""
+    words_used = 0
+    picked = []
+    for idx in range(end, len(sentences)):
+        if len(picked) >= OVERLAP_SENTENCES or words_used >= OVERLAP_WORDS:
+            break
+        picked.append(sentences[idx])
+        words_used += len(sentences[idx].split())
+    return ' '.join(picked).strip()
+
+
+def _build_chunks_from_paragraphs(paragraphs):
+    """Paragraph-first chunking.
+
+    Rules implemented (per project requirement):
+    - Each recognizable paragraph is treated as ONE chunk.
+    - When paragraphs/points are not recognizable (single-paragraph document)
+      OR a paragraph is an unusually large block, split it into generated
+      chunks of ~4 sentences / ~100 words.
+    - For those generated chunks, an overlap window of 1-2 sentences / 25-50
+      words above and below is attached to the ``compare_text`` so the chunk
+      keeps its surrounding meaning during scoring. The overlap is deliberately
+      excluded from ``core_text`` so highlighting/display only covers the real
+      chunk content.
+
+    Returns a list of dicts: ``{'core_text', 'compare_text'}``.
+    """
+    chunks = []
+    single_paragraph_doc = len(paragraphs) == 1
 
     for paragraph in paragraphs:
         sentences = _split_sentences(paragraph)
         if not sentences:
             continue
 
-        if len(sentences) >= 8:
-            if buffer:
-                buffer.extend(sentences[:3])
-                flush_buffer()
-                sentences = sentences[3:]
-            for start in range(0, len(sentences), 4):
-                chunk_sentences = sentences[start:start + 4]
-                if chunk_sentences:
-                    chunks.append(' '.join(chunk_sentences).strip())
+        recognizable_paragraph = not single_paragraph_doc and len(sentences) <= LARGE_PARAGRAPH_SENTENCES
+
+        if recognizable_paragraph:
+            # Whole paragraph = one chunk, no overlap needed.
+            text = paragraph.strip()
+            chunks.append({'core_text': text, 'compare_text': text})
             continue
 
-        if len(sentences) < 3:
-            buffer.extend(sentences)
-            if len(buffer) >= 3:
-                flush_buffer()
-            continue
+        # Unstructured / large block: generate 4-sentence / 100-word chunks
+        # with an overlap window used only for scoring context.
+        for start, end in _fallback_sentence_groups(sentences):
+            core_text = ' '.join(sentences[start:end]).strip()
+            if not core_text:
+                continue
+            prefix = _context_prefix(sentences, start)
+            suffix = _context_suffix(sentences, end)
+            compare_text = ' '.join(part for part in (prefix, core_text, suffix) if part).strip()
+            chunks.append({'core_text': core_text, 'compare_text': compare_text})
 
-        if buffer:
-            buffer.extend(sentences)
-            flush_buffer()
-            continue
-
-        chunks.append(' '.join(sentences).strip())
-
-    flush_buffer()
     return chunks
 
 
@@ -271,70 +328,88 @@ def _semantic_similarity(left_text, right_text):
     return round(numerator / denominator, 3)
 
 
+def _comparison_verdict(score):
+    if score >= 0.65:
+        return 'High similarity'
+    if score >= 0.4:
+        return 'Moderate similarity'
+    if score >= 0.2:
+        return 'Low similarity'
+    return 'Clear'
+
+
+def _chunk_core(chunk):
+    """Return the display/highlight text for a chunk (no overlap window)."""
+    if isinstance(chunk, dict):
+        return chunk.get('core_text', '')
+    return chunk
+
+
+def _chunk_compare(chunk):
+    """Return the scoring text for a chunk (may include overlap context)."""
+    if isinstance(chunk, dict):
+        return chunk.get('compare_text') or chunk.get('core_text', '')
+    return chunk
+
+
 def _compare_chunks(left_chunks, right_chunks):
     """Compare chunks between two documents and return detailed chunk-level analysis.
-    
+
+    Scoring is performed on each chunk's ``compare_text`` (which may include the
+    overlap window for context), while the stored preview text uses the
+    ``core_text`` so downstream highlighting only covers the real chunk content.
+
     Returns:
-        - chunk_matches: List of matching chunks with their scores
-        - highlight_map: Mapping of chunk indices to color IDs for highlighting
+        - chunk_matches: List of matching chunks with their scores and color IDs
     """
-    chunk_matches = []
-    
-    # Compare each left chunk to all right chunks
+    candidates = []
+
     for left_idx, left_chunk in enumerate(left_chunks):
+        left_compare = _chunk_compare(left_chunk)
+        left_core = _chunk_core(left_chunk)
         for right_idx, right_chunk in enumerate(right_chunks):
-            jaccard = _jaccard_similarity(left_chunk, right_chunk)
-            tfidf = _tfidf_similarity(left_chunk, right_chunk)
-            semantic = _semantic_similarity(left_chunk, right_chunk)
-            
-            # Flag if any similarity metric is above threshold
+            right_compare = _chunk_compare(right_chunk)
+            right_core = _chunk_core(right_chunk)
+            jaccard = _jaccard_similarity(left_compare, right_compare)
+            tfidf = _tfidf_similarity(left_compare, right_compare)
+            semantic = _semantic_similarity(left_compare, right_compare)
             is_match = jaccard >= 0.15 or tfidf >= 0.15 or semantic >= 0.12
-            
-            if is_match:
-                chunk_matches.append({
-                    'left_chunk_idx': left_idx,
-                    'right_chunk_idx': right_idx,
-                    'left_text': left_chunk[:200],  # Preview
-                    'right_text': right_chunk[:200],  # Preview
-                    'scores': {
-                        'jaccard': jaccard,
-                        'tfidf': tfidf,
-                        'semantic': semantic,
-                    },
-                    'is_match': True,
-                })
-    
-    # Build highlight map: assign color IDs to matching chunks
-    # Chunks that match the same chunk on the other side get the same color
-    highlight_map = {}
-    color_id = 0
-    
-    for match in chunk_matches:
-        left_idx = match['left_chunk_idx']
-        right_idx = match['right_chunk_idx']
-        
-        # Check if these chunks already have a color assigned
-        left_color = highlight_map.get(('left', left_idx))
-        right_color = highlight_map.get(('right', right_idx))
-        
-        if left_color and right_color and left_color != right_color:
-            # Merge colors - use the smaller one
-            merge_to = min(left_color, right_color)
-            merge_from = max(left_color, right_color)
-            for key in list(highlight_map.keys()):
-                if highlight_map[key] == merge_from:
-                    highlight_map[key] = merge_to
-        elif left_color:
-            highlight_map[('right', right_idx)] = left_color
-        elif right_color:
-            highlight_map[('left', left_idx)] = right_color
-        else:
-            # Assign new color
-            highlight_map[('left', left_idx)] = color_id
-            highlight_map[('right', right_idx)] = color_id
-            color_id += 1
-    
-    return chunk_matches, highlight_map
+            if not is_match:
+                continue
+
+            score = round((jaccard + tfidf + semantic) / 3, 3)
+            candidates.append({
+                'left_chunk_idx': left_idx,
+                'right_chunk_idx': right_idx,
+                'left_text': left_core[:200],
+                'right_text': right_core[:200],
+                'scores': {
+                    'jaccard': jaccard,
+                    'tfidf': tfidf,
+                    'semantic': semantic,
+                },
+                'score': score,
+            })
+
+    # Choose the strongest unique left/right matches to avoid duplicate chunk reuse.
+    candidates.sort(key=lambda item: item['score'], reverse=True)
+    assigned_left = set()
+    assigned_right = set()
+    chunk_matches = []
+
+    for candidate in candidates:
+        left_idx = candidate['left_chunk_idx']
+        right_idx = candidate['right_chunk_idx']
+        if left_idx in assigned_left or right_idx in assigned_right:
+            continue
+
+        candidate['is_match'] = True
+        candidate['color_id'] = len(chunk_matches)
+        chunk_matches.append(candidate)
+        assigned_left.add(left_idx)
+        assigned_right.add(right_idx)
+
+    return chunk_matches
 
 
 def _find_chunk_positions(text, chunks):
@@ -370,17 +445,22 @@ def _find_chunk_positions(text, chunks):
     return positions
 
 
-def _build_chunk_highlights(left_text, left_chunks, right_text, right_chunks, chunk_matches, highlight_map):
-    """Build highlight ranges for matching chunks."""
-    left_positions = _find_chunk_positions(left_text, left_chunks)
-    right_positions = _find_chunk_positions(right_text, right_chunks)
+def _build_chunk_highlights(left_text, left_chunks, right_text, right_chunks, chunk_matches):
+    """Build highlight ranges for matching chunks.
+
+    Positions are computed from each chunk's CORE text only, so the highlight in
+    the original document covers exactly the chunk content and never the overlap
+    context window used for scoring.
+    """
+    left_positions = _find_chunk_positions(left_text, [_chunk_core(c) for c in left_chunks])
+    right_positions = _find_chunk_positions(right_text, [_chunk_core(c) for c in right_chunks])
     
     highlights = []
     
     for match in chunk_matches:
         left_idx = match['left_chunk_idx']
         right_idx = match['right_chunk_idx']
-        color_id = highlight_map.get(('left', left_idx), -1)
+        color_id = match.get('color_id', -1)
         
         left_pos = left_positions[left_idx] if left_idx < len(left_positions) else {'start': 0, 'end': 0}
         right_pos = right_positions[right_idx] if right_idx < len(right_positions) else {'start': 0, 'end': 0}
@@ -398,11 +478,86 @@ def _build_chunk_highlights(left_text, left_chunks, right_text, right_chunks, ch
     return highlights
 
 
+def _sentence_spans(text):
+    """Split text into sentences, returning each sentence with its char start/end
+    positions in the ORIGINAL text so highlighting preserves the exact arrangement."""
+    spans = []
+    if not text:
+        return spans
+    # Match sentences ending with ., !, ? or the final trailing segment
+    for match in re.finditer(r'[^.!?\n]+[.!?]?', text):
+        segment = match.group()
+        if segment.strip():
+            spans.append({
+                'text': segment.strip(),
+                'start': match.start() + (len(segment) - len(segment.lstrip())),
+                'end': match.end() - (len(segment) - len(segment.rstrip())),
+            })
+    return spans
+
+
+def _build_sentence_highlights(left_text, right_text):
+    """Match sentences between the two documents and assign each matched pair a
+    distinct color id. Reordered sentences still match because comparison is
+    all-pairs and position-independent. Returns highlight ranges preserving the
+    original text arrangement, each carrying its own color + per-pair scores."""
+    left_spans = _sentence_spans(left_text)
+    right_spans = _sentence_spans(right_text)
+
+    highlights = []
+    color_id = 0
+    used_right = set()
+
+    for left_span in left_spans:
+        left_tokens = set(_tokenize(left_span['text']))
+        if not left_tokens:
+            continue
+
+        best = None
+        best_score = 0.0
+        for r_idx, right_span in enumerate(right_spans):
+            if r_idx in used_right:
+                continue
+            right_tokens = set(_tokenize(right_span['text']))
+            if not right_tokens:
+                continue
+            overlap = len(left_tokens & right_tokens)
+            if overlap == 0:
+                continue
+            union = len(left_tokens | right_tokens)
+            jaccard = overlap / union if union else 0.0
+            if jaccard > best_score:
+                best_score = jaccard
+                best = (r_idx, right_span, right_tokens)
+
+        # Threshold: sentences sharing enough tokens are considered similar chunks
+        if best and best_score >= 0.3:
+            r_idx, right_span, right_tokens = best
+            used_right.add(r_idx)
+
+            semantic = _semantic_similarity(left_span['text'], right_span['text'])
+            tfidf = _tfidf_similarity(left_span['text'], right_span['text'])
+
+            highlights.append({
+                'left': {'start': left_span['start'], 'end': left_span['end']},
+                'right': {'start': right_span['start'], 'end': right_span['end']},
+                'color_id': color_id,
+                'text': left_span['text'][:200],
+                'jaccard': round(best_score, 3),
+                'tfidf': round(tfidf, 3),
+                'semantic': round(semantic, 3),
+            })
+            color_id += 1
+
+    return highlights
+
+
 def _extract_sentences(text):
     if not text:
         return []
     sentences = [sentence.strip() for sentence in re.split(r'(?<=[.!?])\s+', text) if sentence.strip()]
     return sentences[:8]
+
 
 
 def _find_shared_snippets(left_text, right_text):
@@ -488,34 +643,43 @@ def build_similarity_report(submissions):
             left_chunks = _build_chunks_from_paragraphs(left_paragraphs)
             right_chunks = _build_chunks_from_paragraphs(right_paragraphs)
             
-            # Compare chunks
-            chunk_matches, highlight_map = _compare_chunks(left_chunks, right_chunks)
-            
-            # Build highlights with color mapping
+            # Compare chunks (kept for scoring / flagging)
+            chunk_matches = _compare_chunks(left_chunks, right_chunks)
+
+            # Build chunk-based highlights first, which preserve the same color
+            # for matching chunks on both sides. Fall back to sentence-level
+            # matches only when chunk-level matches are absent.
             highlights = _build_chunk_highlights(
-                left_text, left_chunks,
-                right_text, right_chunks,
-                chunk_matches, highlight_map
-            )
-            
-            # Calculate overall document similarity from chunk matches
+                left_text,
+                left_chunks,
+                right_text,
+                right_chunks,
+                chunk_matches,
+            ) if chunk_matches else _build_sentence_highlights(left_text, right_text)
+
+            # Calculate overall document similarity — always use full-document metrics
+            # so reordered/paraphrased content is still detected accurately
+            doc_jaccard = _jaccard_similarity(left_text, right_text)
+            doc_tfidf = _tfidf_similarity(left_text, right_text)
+            doc_semantic = _semantic_similarity(left_text, right_text)
+
+            # If chunk matches exist, take the max of doc-level and best-chunk scores
             if chunk_matches:
-                avg_jaccard = sum(m['scores']['jaccard'] for m in chunk_matches) / len(chunk_matches)
-                avg_tfidf = sum(m['scores']['tfidf'] for m in chunk_matches) / len(chunk_matches)
-                avg_semantic = sum(m['scores']['semantic'] for m in chunk_matches) / len(chunk_matches)
+                best_jaccard = max(m['scores']['jaccard'] for m in chunk_matches)
+                best_tfidf = max(m['scores']['tfidf'] for m in chunk_matches)
+                best_semantic = max(m['scores']['semantic'] for m in chunk_matches)
+                jaccard = round(max(doc_jaccard, best_jaccard), 3)
+                tfidf = round(max(doc_tfidf, best_tfidf), 3)
+                semantic = round(max(doc_semantic, best_semantic), 3)
             else:
-                avg_jaccard = _jaccard_similarity(left_text, right_text)
-                avg_tfidf = _tfidf_similarity(left_text, right_text)
-                avg_semantic = _semantic_similarity(left_text, right_text)
+                jaccard = round(doc_jaccard, 3)
+                tfidf = round(doc_tfidf, 3)
+                semantic = round(doc_semantic, 3)
             
-            jaccard = round(avg_jaccard, 3)
-            tfidf = round(avg_tfidf, 3)
-            semantic = round(avg_semantic, 3)
-            
+            overall_score = round((jaccard + tfidf + semantic) / 3, 3)
+            verdict = _comparison_verdict(overall_score)
             flagged = any([
-                jaccard >= 0.2,
-                tfidf >= 0.2,
-                semantic >= 0.15,
+                overall_score >= 0.2,
                 bool(chunk_matches),
             ])
 
@@ -523,6 +687,8 @@ def build_similarity_report(submissions):
                 'submission_id': right_submission['id'],
                 'submission_title': right_submission.get('title') or right_submission.get('student_name') or 'Submission',
                 'scores': {'jaccard': jaccard, 'tfidf': tfidf, 'semantic': semantic},
+                'overall_score': overall_score,
+                'verdict': verdict,
                 'flagged': flagged,
                 'chunk_matches': chunk_matches,
                 'highlights': highlights,

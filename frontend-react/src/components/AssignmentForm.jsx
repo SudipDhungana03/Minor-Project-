@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import API from '../services/api';
+import { Card, Input, Button } from './ui';
 
 const AssignmentForm = ({ classroomId, onAssignmentCreated }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-
   const [dueDate, setDueDate] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
     const formData = new FormData();
     formData.append('classroom', classroomId);
@@ -25,61 +27,96 @@ const AssignmentForm = ({ classroomId, onAssignmentCreated }) => {
       setDescription('');
       setDueDate('');
       setFile(null);
-      alert('Assignment published!');
       onAssignmentCreated?.();
     } catch (err) {
-      const errorMessage = err.response?.data?.detail || err.response?.data?.due_date?.[0] || err.response?.data?.file?.[0] || err.response?.data?.title?.[0] || 'Failed to publish. Please check the form.';
+      const errorMessage =
+        err.response?.data?.detail ||
+        err.response?.data?.due_date?.[0] ||
+        err.response?.data?.file?.[0] ||
+        err.response?.data?.title?.[0] ||
+        'Failed to publish. Please check the form.';
       console.error('Assignment publish error', err.response || err);
-      alert(errorMessage);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-      <h3 className="text-xl font-bold text-gray-800 mb-6">New Assignment</h3>
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Title</label>
-          <input 
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
-            value={title} onChange={(e) => setTitle(e.target.value)} required 
-          />
-        </div>
+    <Card padded={false} className="overflow-hidden">
+      <div
+        className="flex items-center gap-3 px-6 py-5 text-white"
+        style={{ background: 'linear-gradient(90deg, #4f46e5 0%, #6366f1 100%)' }}
+      >
 
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-lg">
+          📝
+        </div>
         <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Description</label>
+          <h3 className="text-lg font-bold leading-tight">New assignment</h3>
+          <p className="text-sm text-white/80">Publish a task for your students</p>
+        </div>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-5 p-6">
+        <Input
+          label="Title"
+          name="title"
+          placeholder="e.g. Chapter 5 essay"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+        />
+
+        <div className="w-full">
+          <label
+            htmlFor="description"
+            className="block text-sm font-medium text-ink-muted mb-1.5"
+          >
+            Description
+          </label>
           <textarea
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none h-32"
+            id="description"
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-ink placeholder:text-slate-400
+              h-32 resize-y transition-all duration-200 outline-none focus:border-brand-500 focus:shadow-ring"
+            placeholder="Describe what students need to do..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             required
           />
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Due Date</label>
+        <Input
+          label="Due date"
+          name="due_date"
+          type="datetime-local"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          required
+        />
+
+        <div className="w-full">
+          <label className="block text-sm font-medium text-ink-muted mb-1.5">
+            Attachment
+          </label>
           <input
-            type="datetime-local"
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            required
+            type="file"
+            onChange={(e) => setFile(e.target.files[0])}
+            className="w-full text-sm text-ink-soft file:mr-4 file:py-2 file:px-4 file:rounded-full
+              file:border-0 file:bg-brand-50 file:text-brand-700 file:font-semibold hover:file:bg-brand-100
+              cursor-pointer"
           />
+          {file && (
+            <p className="mt-2 text-sm text-ink-soft">Selected file: {file.name}</p>
+          )}
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Attachment</label>
-          <input type="file" onChange={(e) => setFile(e.target.files[0])} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-indigo-50 file:text-indigo-700 cursor-pointer" />
-          {file && <p className="mt-2 text-sm text-gray-500">Selected file: {file.name}</p>}
-        </div>
+        {error && <p className="text-sm text-rose-600">{error}</p>}
 
-        <button disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-200">
-          {loading ? 'Publishing...' : 'Publish Assignment'}
-        </button>
+        <Button type="submit" fullWidth size="lg" disabled={loading}>
+          {loading ? 'Publishing...' : 'Publish assignment'}
+        </Button>
       </form>
-    </div>
+    </Card>
   );
 };
 

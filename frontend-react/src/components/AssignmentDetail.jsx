@@ -3,58 +3,91 @@ import { useParams } from 'react-router-dom';
 import API from '../services/api';
 import SubmissionForm from './SubmissionForm.jsx';
 import SubmissionList from './SubmissionList.jsx';
+import { Card, Badge, Skeleton } from './ui';
 
-const getMediaUrl = (path) => path?.startsWith('http') ? path : `${API.defaults.baseURL}${path}`;
+const getMediaUrl = (path) =>
+  path?.startsWith('http') ? path : `${API.defaults.baseURL}${path}`;
 
 const AssignmentDetail = () => {
-    const { id } = useParams();
-    const [assignment, setAssignment] = useState(null);
+  const { id } = useParams();
+  const [assignment, setAssignment] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchAssignment = async () => {
-            try {
-                const res = await API.get(`/api/classroom/assignments/${id}/`);
-                setAssignment(res.data);
-            } catch (err) {
-                console.error("Error fetching assignment:", err);
-            }
-        };
-        fetchAssignment();
-    }, [id]);
+  useEffect(() => {
+    const fetchAssignment = async () => {
+      try {
+        const res = await API.get(`/api/classroom/assignments/${id}/`);
+        setAssignment(res.data);
+      } catch (err) {
+        console.error('Error fetching assignment:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAssignment();
+  }, [id]);
 
-    if (!assignment) return <div>Loading assignment...</div>;
+  const role = localStorage.getItem('role');
 
-    const role = localStorage.getItem('role');
-
-    return (
-        <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto', fontFamily: 'Segoe UI, sans-serif' }}>
-            <div style={{ marginBottom: '24px', padding: '24px', borderRadius: '24px', backgroundColor: '#fff', boxShadow: '0 8px 24px rgba(15,23,42,0.06)' }}>
-                <h1 style={{ fontSize: '2rem', marginBottom: '12px' }}>{assignment.title}</h1>
-                <p style={{ margin: '0', color: '#6b7280', fontSize: '0.95rem' }}>{assignment.classroom_name} · {assignment.classroom_subject}</p>
-                <p style={{ marginTop: '18px', color: '#334155', lineHeight: '1.8', whiteSpace: 'pre-line' }}>{assignment.description}</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '22px', color: '#475569', fontSize: '0.95rem' }}>
-                    <span><strong>Due:</strong> {assignment.due_date ? new Date(assignment.due_date).toLocaleString() : 'Not set'}</span>
-                    {assignment.file && (
-                        <a href={getMediaUrl(assignment.file)} target="_blank" rel="noreferrer" style={{ color: '#4f46e5', fontWeight: 600 }}>
-                            Download assignment attachment
-                        </a>
-                    )}
-                </div>
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-8">
+      {loading ? (
+        <Card className="mb-6">
+          <Skeleton className="h-8 w-2/3 mb-4" />
+          <Skeleton className="h-4 w-1/3 mb-6" />
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-5/6" />
+        </Card>
+      ) : !assignment ? (
+        <Card>
+          <p className="text-ink-soft">Assignment not found.</p>
+        </Card>
+      ) : (
+        <>
+          <Card className="mb-6">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <Badge variant="brand">{assignment.classroom_name}</Badge>
+              {assignment.classroom_subject && (
+                <Badge variant="neutral">{assignment.classroom_subject}</Badge>
+              )}
             </div>
+            <h1 className="text-3xl font-extrabold text-ink mb-4">
+              {assignment.title}
+            </h1>
+            <p className="text-ink-soft leading-relaxed whitespace-pre-line">
+              {assignment.description}
+            </p>
+            <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-slate-100 pt-5 text-sm">
+              <span className="text-ink-soft">
+                <span className="font-semibold text-ink-muted">Due:</span>{' '}
+                {assignment.due_date
+                  ? new Date(assignment.due_date).toLocaleString()
+                  : 'Not set'}
+              </span>
+              {assignment.file && (
+                <a
+                  href={getMediaUrl(assignment.file)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-brand-600 hover:text-brand-700 hover:underline"
+                >
+                  Download attachment
+                </a>
+              )}
+            </div>
+          </Card>
 
-            {role === 'student' && (
-                <div style={{ marginBottom: '24px' }}>
-                    <SubmissionForm assignmentId={id} />
-                </div>
-            )}
+          {role === 'student' && (
+            <div className="mb-6">
+              <SubmissionForm assignmentId={id} assignment={assignment} />
+            </div>
+          )}
 
-            {role === 'teacher' && (
-                <div>
-                    <SubmissionList assignmentId={id} />
-                </div>
-            )}
-        </div>
-    );
+          {role === 'teacher' && <SubmissionList assignmentId={id} />}
+        </>
+      )}
+    </div>
+  );
 };
 
 export default AssignmentDetail;

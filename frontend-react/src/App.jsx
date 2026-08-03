@@ -87,40 +87,62 @@ function App() {
   return (
     <Router>
       {/* Container holding Sidebar and Content */}
-      <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#fafafa', fontFamily: 'Arial, sans-serif' }}>
-        
+      <div className="flex min-h-screen bg-[#f6f7fb] font-sans text-ink">
         {/* Render Sidebar ONLY if authenticated */}
         {isAuthenticated && <Sidebar role={role} />}
 
         {/* Main Content Area */}
-        <div style={{ flex: 1, marginLeft: isAuthenticated ? '256px' : '0' }}>
-          {/* Top header with profile */}
-          <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px', borderBottom: '1px solid #eef2f7', background: '#fff' }}>
-            <div />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="flex-1" style={{ marginLeft: isAuthenticated ? '256px' : '0' }}>
+          {/* Top header with profile (only when authenticated) */}
+          {isAuthenticated && (
+            <header className="sticky top-0 z-40 flex items-center justify-end gap-3 border-b border-slate-200/80 bg-white/80 px-7 py-3.5 backdrop-blur">
               {user && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ textAlign: 'right', marginRight: 8 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{user.name || user.username || 'User'}</div>
-                    <div style={{ fontSize: 12, color: '#6b7280' }}>{role || ''}</div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right leading-tight">
+                    <div className="text-sm font-semibold text-ink">
+                      {user.name || user.username || 'User'}
+                    </div>
+                    <div className="text-xs capitalize text-ink-soft">{role || ''}</div>
                   </div>
-                  <div style={{ width: 44, height: 44, borderRadius: 9999, background: '#4f46e5', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
-                    {(user.name || user.username || 'U').slice(0,1).toUpperCase()}
+                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-linear-to-br from-brand-500 to-brand-700 bg-brand-600 font-bold text-white shadow-soft">
+                    {user.avatar_url ? (
+                      <img
+                        src={user.avatar_url}
+                        alt="avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      (user.name || user.username || 'U').slice(0, 1).toUpperCase()
+                    )}
                   </div>
                 </div>
               )}
-            </div>
-          </header>
+            </header>
+          )}
+
           {!isAuthenticated && (
-            <nav style={{ padding: '15px 30px', backgroundColor: '#ffffff', display: 'flex', justifyContent: 'flex-end', gap: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-              <Link to="/login" style={{ textDecoration: 'none', color: '#007acc', fontWeight: 'bold' }}>Login</Link>
-              <Link to="/signup" style={{ textDecoration: 'none', color: '#007acc', fontWeight: 'bold' }}>Sign Up</Link>
+            <nav className="flex items-center justify-between border-b border-slate-200/80 bg-white px-8 py-4">
+              <Link to="/" className="flex items-center gap-2 text-lg font-extrabold text-ink">
+                <span>🛡️</span> OriginalityGuard
+              </Link>
+              <div className="flex items-center gap-4">
+                <Link to="/login" className="text-sm font-semibold text-brand-700 hover:text-brand-800">
+                  Login
+                </Link>
+                <Link
+                  to="/signup"
+                  className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-soft transition-all hover:bg-brand-700"
+                >
+                  Sign Up
+                </Link>
+              </div>
             </nav>
           )}
 
           {/* Page Content */}
-          <div style={{ padding: '40px 20px' }}>
+          <div className={isAuthenticated ? 'px-6 py-8 md:px-10' : 'px-4 py-8'}>
             <Routes>
+
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
