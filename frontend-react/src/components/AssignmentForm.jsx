@@ -43,9 +43,21 @@ const AssignmentForm = ({ classroomId, onAssignmentCreated }) => {
   };
 
   return (
-    <Card>
-      <h3 className="text-xl font-bold text-ink mb-6">New assignment</h3>
-      <form onSubmit={handleSubmit} className="space-y-5">
+    <Card padded={false} className="overflow-hidden">
+      <div
+        className="flex items-center gap-3 px-6 py-5 text-white"
+        style={{ background: 'linear-gradient(90deg, #4f46e5 0%, #6366f1 100%)' }}
+      >
+
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-lg">
+          📝
+        </div>
+        <div>
+          <h3 className="text-lg font-bold leading-tight">New assignment</h3>
+          <p className="text-sm text-white/80">Publish a task for your students</p>
+        </div>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-5 p-6">
         <Input
           label="Title"
           name="title"

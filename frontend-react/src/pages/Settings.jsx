@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import API from '../services/api';
+import { ORGANIZATIONS } from '../data/organizations';
 
 const Settings = () => {
-  const [profile, setProfile] = useState({ name: '', organization: '', email: '' });
+  const [profile, setProfile] = useState({ name: '', email: '' });
+  const [selectedOrganization, setSelectedOrganization] = useState('');
+  const [customOrganization, setCustomOrganization] = useState('');
   const [editing, setEditing] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -13,18 +16,31 @@ const Settings = () => {
   useEffect(() => {
     const load = async () => {
       try {
-          const res = await API.get('/api/user/profile/');
-          setProfile({ name: res.data.name || '', organization: res.data.organization || '', email: res.data.email || '', username: res.data.username || '' });
-          if (res.data.avatar_url) setPreview(res.data.avatar_url);
-        } catch (err) {
-          // ignore
-        }
+        const res = await API.get('/api/user/profile/');
+        setProfile({ name: res.data.name || '', email: res.data.email || '', username: res.data.username || '' });
+
+        const currentOrg = res.data.organization || '';
+        const matchingOrg = ORGANIZATIONS.some((org) => org.value === currentOrg && currentOrg !== '');
+        setSelectedOrganization(matchingOrg ? currentOrg : (currentOrg ? 'Other' : ''));
+        setCustomOrganization(matchingOrg ? '' : currentOrg);
+
+        if (res.data.avatar_url) setPreview(res.data.avatar_url);
+      } catch (err) {
+        // ignore
+      }
     };
     load();
   }, []);
 
+  const updateOrganizationState = (org = '') => {
+    const matchingOrg = ORGANIZATIONS.some((item) => item.value === org && org !== '');
+    setSelectedOrganization(matchingOrg ? org : org ? 'Other' : '');
+    setCustomOrganization(matchingOrg ? '' : org || '');
+  };
+
   const handleChange = (e) => setProfile({ ...profile, [e.target.name]: e.target.value });
   const handlePwdChange = (e) => setPasswords({ ...passwords, [e.target.name]: e.target.value });
+  const selectedOrgValue = selectedOrganization === 'Other' ? customOrganization : selectedOrganization;
 
   const handleFile = (e) => {
     const f = e.target.files && e.target.files[0];
@@ -39,11 +55,11 @@ const Settings = () => {
       if (avatarFile) {
         const fd = new FormData();
         fd.append('name', profile.name);
-        fd.append('organization', profile.organization);
+        fd.append('organization', selectedOrgValue);
         fd.append('avatar', avatarFile);
         await API.patch('/api/user/profile/', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       } else {
-        await API.patch('/api/user/profile/', { name: profile.name, organization: profile.organization });
+        await API.patch('/api/user/profile/', { name: profile.name, organization: selectedOrgValue });
       }
       // Fetch the latest profile from server to ensure fresh data
       let latest = null;
@@ -105,7 +121,37 @@ const Settings = () => {
               <input name="name" value={profile.name} onChange={handleChange} className="block w-full border rounded-md p-2 mt-1" disabled={!editing} />
 
               <label className="text-sm text-slate-600 mt-3">Organization</label>
-              <input name="organization" value={profile.organization} onChange={handleChange} className="block w-full border rounded-md p-2 mt-1" disabled={!editing} />
+              <select
+                name="organization"
+                value={selectedOrganization}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedOrganization(value);
+                  if (value !== 'Other') setCustomOrganization('');
+                }}
+                className="block w-full border rounded-md p-2 mt-1"
+                disabled={!editing}
+                required
+              >
+                {ORGANIZATIONS.map((org) => (
+                  <option key={org.value} value={org.value}>
+                    {org.label}
+                  </option>
+                ))}
+              </select>
+
+              {selectedOrganization === 'Other' && (
+                <input
+                  name="customOrganization"
+                  type="text"
+                  value={customOrganization}
+                  onChange={(e) => setCustomOrganization(e.target.value)}
+                  placeholder="Type your university, school, or college"
+                  className="block w-full border rounded-md p-2 mt-3"
+                  disabled={!editing}
+                  required
+                />
+              )}
 
               <label className="text-sm text-slate-600 mt-3">Email (read-only)</label>
               <input name="email" value={profile.email} onChange={handleChange} disabled={!editing} className={editing ? 'block w-full border rounded-md p-2 mt-1' : 'block w-full border rounded-md p-2 mt-1 bg-slate-50'} />
@@ -120,7 +166,7 @@ const Settings = () => {
           ) : (
             <div className="flex gap-3">
               <button type="button" onClick={(e)=>saveProfile(e)} className="rounded-2xl bg-indigo-600 px-4 py-2 text-white font-semibold">Save profile</button>
-              <button type="button" onClick={async () => { setEditing(false); setMessage(''); try { const res = await API.get('/api/user/profile/'); setProfile({ name: res.data.name || '', organization: res.data.organization || '', email: res.data.email || '', username: res.data.username || '' }); setPreview(res.data.avatar_url || null); } catch (err) { } }} className="rounded-2xl bg-slate-100 px-4 py-2">Cancel</button>
+              <button type="button" onClick={async () => { setEditing(false); setMessage(''); try { const res = await API.get('/api/user/profile/'); setProfile({ name: res.data.name || '', email: res.data.email || '', username: res.data.username || '' }); updateOrganizationState(res.data.organization || ''); setPreview(res.data.avatar_url || null); } catch (err) { } }} className="rounded-2xl bg-slate-100 px-4 py-2">Cancel</button>
             </div>
           )}
         </div>

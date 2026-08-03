@@ -1,4 +1,5 @@
 from urllib import request
+from django.utils import timezone
 
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
@@ -62,7 +63,7 @@ class ClassroomViewSet(viewsets.ModelViewSet):
             return Response({"error": "Only teachers can view pending join requests."}, status=status.HTTP_403_FORBIDDEN)
 
         requests = JoinRequest.objects.filter(classroom__teacher=request.user, status='pending').select_related('student', 'classroom')
-        serializer = JoinRequestSerializer(requests, many=True)
+        serializer = JoinRequestSerializer(requests, many=True, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
@@ -95,7 +96,7 @@ class ClassroomViewSet(viewsets.ModelViewSet):
     def assignments(self, request, pk=None):
         classroom = self.get_object()
         assignments = Assignment.objects.filter(classroom=classroom)
-        serializer = AssignmentSerializer(assignments, many=True)
+        serializer = AssignmentSerializer(assignments, many=True, context={'request': request})
         return Response(serializer.data)
 
 class SubmissionViewSet(viewsets.ModelViewSet):
@@ -103,8 +104,41 @@ class SubmissionViewSet(viewsets.ModelViewSet):
     serializer_class = SubmissionSerializer 
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'teacher':
+            return Submission.objects.filter(assignment__classroom__teacher=user)
+        return Submission.objects.filter(student=user)
+
+    def create(self, request, *args, **kwargs):
+        assignment_id = request.data.get('assignment')
+        if not assignment_id:
+            return Response({'error': 'Assignment ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            assignment = Assignment.objects.get(pk=assignment_id)
+        except Assignment.DoesNotExist:
+            return Response({'error': 'Assignment not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if timezone.now() > assignment.due_date:
+            return Response({'error': 'The submission deadline has passed.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing_submission = Submission.objects.filter(student=request.user, assignment=assignment).first()
+        if existing_submission:
+            serializer = self.get_serializer(existing_submission, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data)
+
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        submission = self.get_object()
+        if timezone.now() > submission.assignment.due_date:
+            return Response({'error': 'The submission deadline has passed.'}, status=status.HTTP_400_BAD_REQUEST)
+        return super().update(request, *args, **kwargs)
+
     def perform_create(self, serializer):
-        # Automatically set the current user as the student
         serializer.save(student=self.request.user)
 
 class AssignmentViewSet(viewsets.ModelViewSet):
@@ -125,6 +159,6 @@ class AssignmentViewSet(viewsets.ModelViewSet):
     def for_assignment(self, request):
         assignment_id = request.query_params.get('assignment_id')
         submissions = Submission.objects.filter(assignment_id=assignment_id).order_by('-submitted_at')
-        serializer = SubmissionSerializer(submissions, many=True)
+        serializer = SubmissionSerializer(submissions, many=True, context={'request': request})
         return Response(serializer.data)
 

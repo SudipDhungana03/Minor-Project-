@@ -56,6 +56,12 @@ class SubmissionSerializer(serializers.ModelSerializer):
     def get_file_url(self, obj):
         if obj.file and obj.file.name:
             try:
+                request = self.context.get('request') if hasattr(self, 'context') else None
+                if request is not None:
+                    try:
+                        return request.build_absolute_uri(obj.file.url)
+                    except Exception:
+                        return obj.file.url
                 return obj.file.url
             except Exception:
                 return None

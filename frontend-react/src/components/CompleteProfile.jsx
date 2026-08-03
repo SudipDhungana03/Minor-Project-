@@ -3,9 +3,12 @@ import API from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import AuthLayout from './AuthLayout.jsx';
 import { Input, Button } from './ui';
+import { ORGANIZATIONS } from '../data/organizations';
 
 const CompleteProfile = () => {
-    const [profile, setProfile] = useState({ role: 'student', name: '', organization: '' });
+    const [profile, setProfile] = useState({ role: 'student', name: '' });
+    const [selectedOrganization, setSelectedOrganization] = useState('');
+    const [customOrganization, setCustomOrganization] = useState('');
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
@@ -20,9 +23,11 @@ const CompleteProfile = () => {
             return;
         }
 
+        const organization = selectedOrganization === 'Other' ? customOrganization : selectedOrganization;
+
         setLoading(true);
         try {
-            await API.patch('/api/user/profile/', profile, {
+            await API.patch('/api/user/profile/', { ...profile, organization }, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -88,15 +93,42 @@ const CompleteProfile = () => {
                     required
                 />
 
-                <Input
-                    label="University / Organization"
-                    name="organization"
-                    type="text"
-                    placeholder="e.g. Springfield University"
-                    value={profile.organization}
-                    onChange={(e) => setProfile({ ...profile, organization: e.target.value })}
-                    required
-                />
+                <div className="w-full">
+                    <label htmlFor="organization" className="block text-sm font-medium text-ink-muted mb-1.5">
+                        University / School / College
+                    </label>
+                    <select
+                        id="organization"
+                        value={selectedOrganization}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            setSelectedOrganization(value);
+                            if (value !== 'Other') {
+                                setCustomOrganization('');
+                            }
+                        }}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-ink transition-all duration-200 outline-none focus:border-brand-500 focus:shadow-ring"
+                        required
+                    >
+                        {ORGANIZATIONS.map((org) => (
+                            <option key={org.value} value={org.value}>
+                                {org.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {selectedOrganization === 'Other' && (
+                    <Input
+                        label="Enter your institution"
+                        name="customOrganization"
+                        type="text"
+                        placeholder="Type your university, school, or college"
+                        value={customOrganization}
+                        onChange={(e) => setCustomOrganization(e.target.value)}
+                        required
+                    />
+                )}
 
                 <Button type="submit" fullWidth size="lg" disabled={loading}>
                     {loading ? 'Saving...' : 'Complete profile'}

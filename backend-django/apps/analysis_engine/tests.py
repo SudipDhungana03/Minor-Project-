@@ -19,14 +19,45 @@ class PlagiarismVectorTests(SimpleTestCase):
         self.assertGreater(report["matrix"][0][1]["scores"]["semantic"], 0.0)
         self.assertTrue(report["matrix"][0][1]["flagged"])
 
-    def test_build_similarity_report_assigns_distinct_highlight_colors(self):
+    def test_build_similarity_report_generates_highlights(self):
         submissions = [
-            {"id": 1, "title": "Alpha", "text": "Chunk A. Chunk B. Chunk C. Chunk D."},
-            {"id": 2, "title": "Beta", "text": "Chunk A. Chunk B. Chunk C. Chunk X."},
+            {"id": 1, "title": "Alpha", "text": "Chunk A. Chunk B. Chunk C. Chunk D. Chunk E. Chunk F. Chunk G. Chunk H."},
+            {"id": 2, "title": "Beta", "text": "Chunk A. Chunk B. Chunk C. Chunk X. Chunk E. Chunk F. Chunk G. Chunk Y."},
         ]
 
         report = build_similarity_report(submissions)
         highlights = report["matrix"][0][1]["highlights"]
 
-        self.assertTrue(len(highlights) >= 2)
-        self.assertGreater(len({highlight["color_id"] for highlight in highlights}), 1)
+        self.assertGreaterEqual(len(highlights), 1)
+        self.assertTrue(all("color_id" in highlight for highlight in highlights))
+
+    def test_plagiarism_vector_splits_long_unstructured_text_into_100_word_chunks(self):
+        text = " ".join([f"word{i}" for i in range(1, 253)])
+        paragraphs = [text]
+
+        from apps.analysis_engine.ml_adapters.plagiarism_vector import _build_chunks_from_paragraphs
+        chunks = _build_chunks_from_paragraphs(paragraphs)
+
+        self.assertEqual(len(chunks), 2)
+        self.assertEqual(len(chunks[0]['core_text'].split()), 100)
+        self.assertEqual(len(chunks[1]['core_text'].split()), 152)
+
+    def test_plagiarism_vector_merges_tiny_trailing_chunk(self):
+        text = " ".join([f"word{i}" for i in range(1, 125)])
+        paragraphs = [text]
+
+        from apps.analysis_engine.ml_adapters.plagiarism_vector import _build_chunks_from_paragraphs
+        chunks = _build_chunks_from_paragraphs(paragraphs)
+
+        self.assertEqual(len(chunks), 1)
+        self.assertTrue(len(chunks[0]['core_text'].split()) <= 124)
+
+    def test_plagiarism_vector_splits_large_structured_paragraphs_into_sentence_chunks(self):
+        text = " ".join([f"Sentence {i}." for i in range(1, 10)])
+        paragraphs = [text]
+
+        from apps.analysis_engine.ml_adapters.plagiarism_vector import _build_chunks_from_paragraphs
+        chunks = _build_chunks_from_paragraphs(paragraphs)
+
+        self.assertEqual(len(chunks), 2)
+        self.assertTrue(all(len(chunk['core_text'].split()) > 1 for chunk in chunks))

@@ -45,13 +45,16 @@ const TeacherDashboard = () => {
         load();
     }, []);
 
+    // Inline gradients guarantee the colored header renders regardless of how
+    // Tailwind resolves dynamic gradient utility classes.
     const gradients = [
-        'from-brand-500 to-brand-700',
-        'from-emerald-500 to-teal-600',
-        'from-amber-500 to-orange-600',
-        'from-pink-500 to-rose-600',
-        'from-sky-500 to-indigo-600',
+        'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)',
+        'linear-gradient(135deg, #10b981 0%, #0d9488 100%)',
+        'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)',
+        'linear-gradient(135deg, #ec4899 0%, #e11d48 100%)',
+        'linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)',
     ];
+
 
     return (
         <div className="mx-auto max-w-6xl">
@@ -104,7 +107,8 @@ const TeacherDashboard = () => {
                 <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {classrooms.map((c, i) => (
                         <Card key={c.id} hover padded={false} className="overflow-hidden">
-                            <div className={`h-24 bg-linear-to-br ${gradients[i % gradients.length]}`} />
+                            <div className="h-24" style={{ background: gradients[i % gradients.length] }} />
+
                             <div className="p-6">
                                 <h3 className="text-lg font-bold text-ink">{c.name}</h3>
                                 <p className="mt-1 text-sm text-ink-soft">{c.subject}</p>
@@ -152,7 +156,7 @@ const TeacherDashboard = () => {
                                     <span>{assignment.classroom_subject}</span>
                                 </p>
                             </div>
-                            <Button variant="ghost" to={`/assignment/${assignment.id}`}>
+                            <Button variant="primary" to={`/assignment/${assignment.id}`}>
                                 View submissions →
                             </Button>
                         </Card>

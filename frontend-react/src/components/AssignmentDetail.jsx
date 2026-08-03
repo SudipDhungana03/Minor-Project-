@@ -79,7 +79,7 @@ const AssignmentDetail = () => {
 
           {role === 'student' && (
             <div className="mb-6">
-              <SubmissionForm assignmentId={id} />
+              <SubmissionForm assignmentId={id} assignment={assignment} />
             </div>
           )}
 
