@@ -7,3 +7,9 @@ PyPDF2
 python-pptx
 requests
 firecrawl-py
+pytesseract
+Pillow
+pdf2image
+torch
+transformers
+opencv-python
