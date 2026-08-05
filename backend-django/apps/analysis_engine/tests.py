@@ -94,3 +94,32 @@ class OCREngineTests(SimpleTestCase):
         extracted = ocr_engine.extract_text_from_file(dummy)
 
         self.assertEqual(extracted, 'Hello world from OCR test')
+
+    def test_submission_serializer_prefers_extracted_text_over_comment(self):
+        from apps.classroom.serializers import SubmissionSerializer
+
+        class DummyAssignment:
+            pk = 1
+            title = 'Test Assignment'
+            description = 'Assignment description.'
+
+        class DummyStudent:
+            pk = 2
+            username = 'testuser'
+
+        class DummySubmission:
+            def __init__(self, content, extracted_text, file):
+                self.pk = 3
+                self.assignment = DummyAssignment()
+                self.student = DummyStudent()
+                self.content = content
+                self.extracted_text = extracted_text
+                self.file = file
+
+        dummy = DummySubmission(
+            content='This is a student note.',
+            extracted_text='This is extracted file text.',
+            file=None
+        )
+        serializer = SubmissionSerializer(dummy)
+        self.assertEqual(serializer.data['extracted_text'], 'This is extracted file text.')

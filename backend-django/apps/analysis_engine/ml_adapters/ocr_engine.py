@@ -79,20 +79,37 @@ def _clean_image(image, handwritten=False):
         gray = ImageOps.autocontrast(gray)
         if handwritten and ImageFilter is not None:
             gray = gray.filter(ImageFilter.MedianFilter(size=3))
+            gray = gray.point(lambda p: 255 if p > 145 else 0)
         return gray
     except Exception:
         return image
 
 
-def _run_tesseract(image):
+def _run_tesseract(image, handwritten=False):
     if pytesseract is None or image is None:
         return None
-    try:
-        cleaned = _clean_image(image, handwritten=False)
-        return pytesseract.image_to_string(cleaned, lang='eng', config='--psm 6') or None
-    except Exception:
-        logger.exception('Tesseract OCR failed.')
-        return None
+
+    def attempt_tesseract(target_image, config):
+        try:
+            return pytesseract.image_to_string(target_image, lang='eng', config=config) or ''
+        except Exception:
+            logger.exception('Tesseract OCR attempt failed with config: %s', config)
+            return ''
+
+    cleaned = _clean_image(image, handwritten=handwritten)
+    text = attempt_tesseract(cleaned, '--oem 1 --psm 6').strip()
+    if len(text) >= 60:
+        return text
+
+    fallback_image = cleaned if handwritten else _clean_image(image, handwritten=True)
+    for config in ['--oem 1 --psm 11', '--oem 1 --psm 4']:
+        candidate = attempt_tesseract(fallback_image, config).strip()
+        if candidate and len(candidate) > len(text):
+            text = candidate
+            if len(text) >= 100:
+                break
+
+    return text or None
 
 
 def _run_trocr(image):
@@ -151,6 +168,19 @@ def _get_file_bytes(file_field):
         except Exception:
             logger.exception('Failed to open file from storage: %s', name)
 
+    if source is None and use_bytes is None:
+        if hasattr(file_field, 'open'):
+            try:
+                file_field.open('rb')
+                use_bytes = BytesIO(file_field.read())
+            except Exception:
+                logger.exception('Failed to read FileField contents for extraction: %s', name or url)
+            finally:
+                try:
+                    file_field.close()
+                except Exception:
+                    pass
+
     if source is None and use_bytes is None and hasattr(file_field, 'read'):
         try:
             file_field.seek(0)
@@ -160,6 +190,15 @@ def _get_file_bytes(file_field):
             use_bytes = BytesIO(file_field.read())
         except Exception:
             logger.exception('Failed to read file-like object for extraction: %s', name or url)
+
+    if source is None and use_bytes is None:
+        file_obj = getattr(file_field, '_file', None)
+        if file_obj is not None:
+            try:
+                file_obj.seek(0)
+                use_bytes = BytesIO(file_obj.read())
+            except Exception:
+                logger.exception('Failed to read file-like object for extraction: %s', name or url)
 
     if source is None and use_bytes is None and url and url.startswith(('http://', 'https://')):
         try:
@@ -296,16 +335,19 @@ def extract_text_from_file(file_field):
         return None
 
     if ext == '.pdf':
-        text = _extract_text_from_pdf(source, use_bytes)
-        if text:
-            return text
+        if source or use_bytes:
+            text = _extract_text_from_pdf(source, use_bytes)
+            if text:
+                return text
 
-        try:
-            from pypdf import PdfReader
-            reader = PdfReader(use_bytes) if use_bytes else PdfReader(source)
-            return '\n'.join([p.extract_text() or '' for p in reader.pages])
-        except Exception:
-            pass
+            try:
+                from pypdf import PdfReader
+                reader = PdfReader(use_bytes) if use_bytes else PdfReader(source)
+                return '\n'.join([p.extract_text() or '' for p in reader.pages])
+            except Exception:
+                logger.exception('PDF text extraction failed with pypdf.')
+                pass
+        return None
 
     if ext in OCR_IMAGE_EXTENSIONS:
         text = _extract_text_from_image_bytes(use_bytes or BytesIO(open(source, 'rb').read()))

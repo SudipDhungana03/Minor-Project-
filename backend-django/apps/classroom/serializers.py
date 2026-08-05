@@ -38,12 +38,14 @@ class SubmissionSerializer(serializers.ModelSerializer):
             return None
 
     def get_extracted_text(self, obj):
-        if obj.content and obj.content.strip():
-            return obj.content
         if obj.extracted_text:
             return obj.extracted_text
         if obj.file:
-            return extract_text_from_file(obj.file)
+            extracted = extract_text_from_file(obj.file)
+            if extracted:
+                return extracted
+        if obj.content and obj.content.strip():
+            return obj.content
         return None
 
     def get_file_exists(self, obj):
