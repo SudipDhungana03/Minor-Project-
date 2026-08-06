@@ -95,6 +95,11 @@ class OCREngineTests(SimpleTestCase):
 
         self.assertEqual(extracted, 'Hello world from OCR test')
 
+    def test_normalize_extracted_text_merges_broken_lines(self):
+        raw = 'Hello\n\nWorld\nThis is\nA test.'
+        normalized = ocr_engine._normalize_extracted_text(raw)
+        self.assertEqual(normalized, 'Hello\n\nWorld This is A test.')
+
     def test_submission_serializer_prefers_extracted_text_over_comment(self):
         from apps.classroom.serializers import SubmissionSerializer
 
@@ -123,3 +128,29 @@ class OCREngineTests(SimpleTestCase):
         )
         serializer = SubmissionSerializer(dummy)
         self.assertEqual(serializer.data['extracted_text'], 'This is extracted file text.')
+
+    def test_extract_text_from_file_prefers_image_ocr_when_file_present(self):
+        class DummyFile:
+            def __init__(self, data, name):
+                self._buffer = BytesIO(data)
+                self.name = name
+
+            def seek(self, offset, whence=0):
+                return self._buffer.seek(offset, whence)
+
+            def read(self):
+                return self._buffer.read()
+
+        dummy = DummyFile(b'Hello world from OCR test', 'test_file.txt')
+        extracted = ocr_engine.extract_text_from_file(dummy)
+
+        self.assertEqual(extracted, 'Hello world from OCR test')
+
+    def test_run_analysis_splits_large_ocr_like_chunks(self):
+        text = ' '.join([f'word{i}' for i in range(1, 241)])
+        report = ocr_engine._split_large_ocr_like_chunks([text])
+        self.assertEqual(len(report), 2)
+        self.assertGreaterEqual(len(report[0].split()), 100)
+        self.assertLessEqual(len(report[0].split()), 120)
+        self.assertGreaterEqual(len(report[1].split()), 100)
+        self.assertLessEqual(len(report[1].split()), 120)

@@ -54,6 +54,9 @@ SENTENCE_SPLIT_PATTERN = re.compile(r'(?<=[.!?])\s+(?=[A-Z0-9])')
 def _split_paragraphs(text):
     """Split text into paragraphs by double newlines."""
     normalized = text.replace('\r\n', '\n').replace('\r', '\n')
+    normalized = re.sub(r'[ \t]+\n', '\n', normalized)
+    normalized = re.sub(r'\n{2,}', '\n\n', normalized)
+    normalized = re.sub(r'(?<!\n)\n(?!\n)', ' ', normalized)
     paragraphs = [p.strip() for p in re.split(r'\n{2,}', normalized) if p.strip()]
     return paragraphs if paragraphs else [normalized.strip()]
 

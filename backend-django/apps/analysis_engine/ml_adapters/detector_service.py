@@ -32,6 +32,9 @@ def _load_model():
 
 def _split_paragraphs(text):
     normalized = text.replace('\r\n', '\n').replace('\r', '\n')
+    normalized = re.sub(r'[ \t]+\n', '\n', normalized)
+    normalized = re.sub(r'\n{2,}', '\n\n', normalized)
+    normalized = re.sub(r'(?<!\n)\n(?!\n)', ' ', normalized)
     paragraphs = [p.strip() for p in re.split(r'\n{2,}', normalized) if p.strip()]
     return paragraphs if paragraphs else [normalized.strip()]
 
@@ -84,6 +87,32 @@ def _build_chunks_from_paragraphs(paragraphs):
     return chunks
 
 
+def _split_large_ocr_like_chunks(chunks, min_words=100, max_words=120):
+    split_chunks = []
+
+    for chunk in chunks:
+        words = chunk.split()
+        if len(words) <= max_words:
+            split_chunks.append(chunk)
+            continue
+
+        sentence_count = len(_split_sentences(chunk))
+        punctuation_count = len(re.findall(r'[.!?]', chunk))
+        if sentence_count > 1 and punctuation_count >= max(1, sentence_count - 1):
+            split_chunks.append(chunk)
+            continue
+
+        idx = 0
+        while idx < len(words):
+            end = min(idx + max_words, len(words))
+            if len(words) - end < min_words and len(words) - idx > max_words:
+                end = len(words)
+            split_chunks.append(' '.join(words[idx:end]).strip())
+            idx = end
+
+    return split_chunks
+
+
 def _normalize_probability(prediction, proba_values):
     try:
         if proba_values is None:
@@ -107,9 +136,11 @@ def _sigmoid(x):
         return 0.0
 
 
-def run_analysis(text):
+def run_analysis(text, ocr_like=False):
     paragraphs = _split_paragraphs(text)
     chunks = _build_chunks_from_paragraphs(paragraphs)
+    if ocr_like:
+        chunks = _split_large_ocr_like_chunks(chunks)
 
     analysis_results = []
 

@@ -3,15 +3,25 @@ from rest_framework.decorators import api_view
 from .detector_service import run_analysis, run_source_verification
 from ..models import DetectionResult
 from apps.classroom.models import Submission
-from .ocr_engine import extract_text_from_file
+from .ocr_engine import OCR_IMAGE_EXTENSIONS, extract_text_from_file
 from .plagiarism_vector import build_similarity_report
 import os
+import re
 import logging
 import io
 import requests
 from threading import Thread
 
 logger = logging.getLogger(__name__)
+
+
+def _is_ocr_like_text(text):
+    if not text:
+        return False
+    word_count = len(text.split())
+    sentence_count = len(re.findall(r'[.!?]', text))
+    punctuation_ratio = sentence_count / max(word_count, 1)
+    return word_count > 40 and punctuation_ratio < 0.03
 
 
 @api_view(['POST'])
@@ -25,18 +35,28 @@ def detect_submission(request):
         return Response({"error": "Submission not found"}, status=404)
         
     text = submission.content or ''
+    ocr_like = False
 
-    # If a file was uploaded, always try to extract its text and include it in analysis.
     if submission.file:
-        extracted = extract_text_from_file(submission.file)
+        if submission.extracted_text:
+            extracted = submission.extracted_text
+            ext = os.path.splitext(submission.file.name.split('?')[0])[1].lower() if submission.file.name else ''
+            if ext in OCR_IMAGE_EXTENSIONS:
+                ocr_like = True
+            elif ext == '.pdf':
+                if _is_ocr_like_text(extracted):
+                    ocr_like = True
+        else:
+            extracted, ocr_like = extract_text_from_file(submission.file, return_extraction_type=True)
+            if extracted:
+                submission.extracted_text = extracted
+                submission.save(update_fields=['extracted_text'])
+
         if extracted:
             if text.strip():
                 text = f"{text}\n\n{extracted}"
             else:
                 text = extracted
-            if extracted != submission.extracted_text:
-                submission.extracted_text = extracted
-                submission.save(update_fields=['extracted_text'])
         elif not text.strip():
             report = {
                 "is_ai_generated": False,
@@ -54,7 +74,7 @@ def detect_submission(request):
             return Response({"message": "Extraction failed", "report": report}, status=200)
 
     # 2. Run AI detection only; source lookup runs separately.
-    report = run_analysis(text)
+    report = run_analysis(text, ocr_like=ocr_like)
     
     # 3. Save to database
     result, created = DetectionResult.objects.update_or_create(
@@ -85,11 +105,24 @@ def verify_submission_sources(request):
         report = existing.report_data
     else:
         text = submission.content or ''
+        ocr_like = False
         if submission.file:
-            extracted = extract_text_from_file(submission.file)
+            if submission.extracted_text:
+                extracted = submission.extracted_text
+                ext = os.path.splitext(submission.file.name.split('?')[0])[1].lower() if submission.file.name else ''
+                if ext in OCR_IMAGE_EXTENSIONS:
+                    ocr_like = True
+                elif ext == '.pdf':
+                    if _is_ocr_like_text(extracted):
+                        ocr_like = True
+            else:
+                extracted, ocr_like = extract_text_from_file(submission.file, return_extraction_type=True)
+                if extracted:
+                    submission.extracted_text = extracted
+                    submission.save(update_fields=['extracted_text'])
             if extracted:
                 text = f"{text}\n\n{extracted}" if text.strip() else extracted
-        report = run_analysis(text)
+        report = run_analysis(text, ocr_like=ocr_like)
 
     def _verify_in_background(report_data):
         try:

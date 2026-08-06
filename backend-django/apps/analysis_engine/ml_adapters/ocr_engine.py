@@ -1,10 +1,14 @@
 import io
 import os
+import re
 import logging
+import tempfile
 from io import BytesIO
 from typing import Optional, List
 
 import requests
+import shutil
+import subprocess
 
 try:
     from PIL import Image, ImageFilter, ImageOps
@@ -17,6 +21,16 @@ try:
     import pytesseract
 except ImportError:
     pytesseract = None
+
+try:
+    import easyocr
+except ImportError:
+    easyocr = None
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 try:
     from transformers import TrOCRProcessor, VisionEncoderDecoderModel
@@ -35,6 +49,7 @@ logger = logging.getLogger(__name__)
 TROCR_MODEL_NAME = 'microsoft/trocr-base-handwritten'
 _trocr_processor = None
 _trocr_model = None
+_reader = None
 
 OCR_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif'}
 TEXT_FILE_EXTENSIONS = {'.txt'}
@@ -49,14 +64,34 @@ def _load_trocr_model() -> bool:
         logger.warning('TrOCR dependencies are not installed.')
         return False
 
+    for use_fast in (True, False):
+        try:
+            _trocr_processor = TrOCRProcessor.from_pretrained(TROCR_MODEL_NAME, use_fast=use_fast)
+            _trocr_model = VisionEncoderDecoderModel.from_pretrained(TROCR_MODEL_NAME)
+            return True
+        except Exception as exc:
+            logger.exception('Failed to load TrOCR model with use_fast=%s: %s', use_fast, exc)
+            _trocr_processor = None
+            _trocr_model = None
+
+    return False
+
+
+def _load_easyocr_reader() -> bool:
+    global _reader
+    if _reader is not None:
+        return True
+
+    if easyocr is None or np is None:
+        logger.warning('EasyOCR or numpy is not installed.')
+        return False
+
     try:
-        _trocr_processor = TrOCRProcessor.from_pretrained(TROCR_MODEL_NAME)
-        _trocr_model = VisionEncoderDecoderModel.from_pretrained(TROCR_MODEL_NAME)
+        _reader = easyocr.Reader(['en'], gpu=False)
         return True
     except Exception as exc:
-        logger.exception('Failed to load TrOCR model: %s', exc)
-        _trocr_processor = None
-        _trocr_model = None
+        logger.exception('Failed to create easyocr reader: %s', exc)
+        _reader = None
         return False
 
 
@@ -85,9 +120,97 @@ def _clean_image(image, handwritten=False):
         return image
 
 
+def _aggressive_preprocess(image):
+    """Aggressively preprocess a PIL Image to improve handwritten OCR recall.
+
+    Steps:
+    - Convert to grayscale
+    - Contrast stretching (2-98 percentile)
+    - Global thresholding using a conservative cutoff
+    - Upscale small images
+    - Unsharp mask to emphasize strokes
+    """
+    if Image is None or image is None or np is None:
+        return image
+
+    try:
+        gray = image.convert('L')
+        arr = np.array(gray).astype('float32')
+
+        # Contrast stretch
+        p2, p98 = np.percentile(arr, (2, 98))
+        if p98 - p2 > 1:
+            arr = np.clip((arr - p2) * 255.0 / (p98 - p2), 0, 255)
+
+        # Slight blur to reduce noise then sharpen later
+        proc = Image.fromarray(arr.astype('uint8'))
+        if ImageFilter is not None:
+            proc = proc.filter(ImageFilter.MedianFilter(size=3))
+
+        # Global threshold (use mean * 0.9 to be slightly permissive)
+        a = np.array(proc).astype('uint8')
+        thresh = max(30, int(a.mean() * 0.9))
+        binar = (a > thresh).astype('uint8') * 255
+        proc = Image.fromarray(binar.astype('uint8'))
+
+        # Upscale to help OCR
+        w, h = proc.size
+        if w < 1600 or h < 1600:
+            new_w = min(2200, max(1600, w * 2))
+            new_h = min(2200, max(1600, h * 2))
+            proc = proc.resize((new_w, new_h), Image.BILINEAR)
+
+        # Unsharp mask to emphasize pen strokes
+        try:
+            proc = proc.convert('L')
+            proc = proc.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
+        except Exception:
+            pass
+
+        return proc.convert('RGB')
+    except Exception:
+        return image
+
+
+def _generate_ocr_variants(image, handwritten=False):
+    if Image is None or image is None:
+        return []
+
+    variants = []
+    try:
+        base = image.convert('RGB')
+        variants.append(base)
+        cleaned = _clean_image(base, handwritten=handwritten)
+        if cleaned is not None:
+            variants.append(cleaned.convert('RGB'))
+            try:
+                inverted = ImageOps.invert(cleaned)
+                variants.append(inverted.convert('RGB'))
+            except Exception:
+                pass
+        if base.mode != 'RGB':
+            variants.append(base.convert('RGB'))
+    except Exception:
+        variants.append(image)
+
+    # Remove duplicates by size/mode and preserve order
+    unique = []
+    keys = set()
+    for img in variants:
+        key = (img.size, img.mode)
+        if key not in keys:
+            keys.add(key)
+            unique.append(img)
+    return unique
+
+
 def _run_tesseract(image, handwritten=False):
     if pytesseract is None or image is None:
         return None
+    try:
+        _find_and_configure_tesseract()
+    except Exception:
+        pass
 
     def attempt_tesseract(target_image, config):
         try:
@@ -96,20 +219,118 @@ def _run_tesseract(image, handwritten=False):
             logger.exception('Tesseract OCR attempt failed with config: %s', config)
             return ''
 
-    cleaned = _clean_image(image, handwritten=handwritten)
-    text = attempt_tesseract(cleaned, '--oem 1 --psm 6').strip()
-    if len(text) >= 60:
-        return text
+    best_text = ''
+    # When handwriting is expected, run aggressive preprocessing first
+    variants = []
+    if handwritten:
+        try:
+            agg = _aggressive_preprocess(image)
+            variants.extend(_generate_ocr_variants(agg, handwritten=True))
+        except Exception:
+            pass
+    variants.extend(_generate_ocr_variants(image, handwritten=handwritten))
 
-    fallback_image = cleaned if handwritten else _clean_image(image, handwritten=True)
-    for config in ['--oem 1 --psm 11', '--oem 1 --psm 4']:
-        candidate = attempt_tesseract(fallback_image, config).strip()
-        if candidate and len(candidate) > len(text):
-            text = candidate
-            if len(text) >= 100:
-                break
+    for img in variants:
+        for config in ['--oem 3 --psm 3', '--oem 3 --psm 6', '--oem 1 --psm 3', '--oem 1 --psm 6', '--oem 1 --psm 11', '--oem 1 --psm 4']:
+            candidate = attempt_tesseract(img, config).strip()
+            if candidate and len(candidate) > len(best_text):
+                best_text = candidate
+                if len(best_text) >= 100:
+                    return best_text
 
-    return text or None
+    return best_text or None
+
+
+def _run_easyocr(image):
+    if image is None or easyocr is None or np is None:
+        return None
+    if not _load_easyocr_reader():
+        return None
+
+    try:
+        # Aggressive preprocessing for handwritten scans
+        proc_img = _aggressive_preprocess(image)
+        try:
+            proc_img = proc_img.convert('RGB')
+        except Exception:
+            proc_img = image.convert('RGB')
+
+        # Upscale small scans to help EasyOCR
+        try:
+            w, h = proc_img.size
+            if w < 1600 and h < 1600:
+                proc_img = proc_img.resize((min(2000, w * 2), min(2000, h * 2)))
+        except Exception:
+            pass
+
+        texts = _reader.readtext(np.array(proc_img), detail=0)
+        if texts:
+            return '\n'.join([t.strip() for t in texts if t and t.strip()]).strip() or None
+    except Exception:
+        logger.exception('EasyOCR failed.')
+    return None
+
+
+def _find_and_configure_tesseract() -> bool:
+    """Try to find a Tesseract binary on the system and configure pytesseract.
+
+    Returns True if tesseract executable is found and configured, otherwise False.
+    """
+    if pytesseract is None:
+        return False
+
+    try:
+        cmd = getattr(pytesseract.pytesseract, 'tesseract_cmd', None)
+        if cmd:
+            if shutil.which(cmd) or os.path.exists(cmd):
+                return True
+    except Exception:
+        pass
+
+    candidates = [
+        shutil.which('tesseract'),
+        r'C:\Program Files\Tesseract-OCR\tesseract.exe',
+        r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
+    ]
+
+    for c in candidates:
+        if not c:
+            continue
+        try:
+            if shutil.which(c) or os.path.exists(c):
+                pytesseract.pytesseract.tesseract_cmd = c
+                return True
+        except Exception:
+            continue
+
+    return False
+
+
+def _run_google_vision(image):
+    """Use Google Cloud Vision as a fallback if available. Returns text or None."""
+    try:
+        from google.cloud import vision
+    except Exception:
+        return None
+
+    try:
+        client = vision.ImageAnnotatorClient()
+        buffered = BytesIO()
+        image.save(buffered, format='PNG')
+        content = buffered.getvalue()
+        gimg = vision.Image(content=content)
+        response = client.document_text_detection(image=gimg)
+        if response.error.message:
+            logger.warning('Google Vision error: %s', response.error.message)
+            return None
+        annotation = response.full_text_annotation
+        if annotation and annotation.text:
+            return annotation.text.strip() or None
+        if response.text_annotations:
+            return response.text_annotations[0].description.strip() or None
+    except Exception:
+        logger.exception('Google Vision OCR failed.')
+    return None
 
 
 def _run_trocr(image):
@@ -124,27 +345,62 @@ def _run_trocr(image):
         return None
 
 
-def _choose_best_text(tesseract_text: Optional[str], trocr_text: Optional[str]) -> Optional[str]:
+def _choose_best_text(tesseract_text: Optional[str], trocr_text: Optional[str], easyocr_text: Optional[str] = None) -> Optional[str]:
+    return _choose_best_text_full(tesseract_text, trocr_text, easyocr_text, None)
+
+
+def _choose_best_text_full(tesseract_text: Optional[str], trocr_text: Optional[str], easyocr_text: Optional[str] = None, google_text: Optional[str] = None) -> Optional[str]:
     tesseract_text = (tesseract_text or '').strip()
     trocr_text = (trocr_text or '').strip()
+    easyocr_text = (easyocr_text or '').strip()
+    google_text = (google_text or '').strip()
 
-    if not tesseract_text and not trocr_text:
+    candidates = [t for t in [tesseract_text, trocr_text, easyocr_text, google_text] if t]
+    if not candidates:
         return None
-    if trocr_text and len(trocr_text) > len(tesseract_text):
-        return trocr_text
-    return tesseract_text or trocr_text
+    return max(candidates, key=len)
 
 
 def _extract_text_from_image(image):
+    """Extract text from a PIL Image using available OCR engines.
+
+    Strategy:
+    - Run Tesseract first (fast). If Tesseract output is short/weak, prefer EasyOCR.
+    - Always attempt TroCR and Google Vision (if available) as fallbacks.
+    - Prefer the longest reasonable candidate, but give EasyOCR priority when
+      Tesseract produced very little text.
+    """
     if image is None:
         return None
 
-    tesseract_text = _run_tesseract(image)
-    if tesseract_text and len(tesseract_text.strip()) >= 60:
-        return tesseract_text
+    try:
+        tesseract_text = _run_tesseract(image)
+    except Exception:
+        tesseract_text = None
 
-    trocr_text = _run_trocr(image)
-    return _choose_best_text(tesseract_text, trocr_text)
+    try:
+        easyocr_text = _run_easyocr(image)
+    except Exception:
+        easyocr_text = None
+
+    try:
+        trocr_text = _run_trocr(image)
+    except Exception:
+        trocr_text = None
+
+    try:
+        google_text = _run_google_vision(image)
+    except Exception:
+        google_text = None
+
+    t_len = len((tesseract_text or '').strip())
+    e_len = len((easyocr_text or '').strip())
+
+    # If Tesseract is weak but EasyOCR produced more, prefer EasyOCR.
+    if t_len < 60 and e_len > t_len:
+        return _choose_best_text_full(easyocr_text, trocr_text, None, google_text)
+
+    return _choose_best_text_full(tesseract_text, trocr_text, easyocr_text, google_text)
 
 
 def _get_file_bytes(file_field):
@@ -220,18 +476,73 @@ def _get_file_bytes(file_field):
 
 
 def _load_pdf_images(source, use_bytes):
-    if convert_from_bytes is None or convert_from_path is None:
-        return []
+    images = []
+    if Image is None:
+        return images
+
+    if convert_from_bytes is not None and convert_from_path is not None:
+        try:
+            if use_bytes is not None:
+                use_bytes.seek(0)
+                images = convert_from_bytes(use_bytes.getvalue(), dpi=300, fmt='png')
+            elif source is not None:
+                images = convert_from_path(source, dpi=300, fmt='png')
+            if images:
+                return images
+        except Exception:
+            logger.exception('Failed to convert PDF to images for OCR.')
 
     try:
+        import fitz
         if use_bytes is not None:
             use_bytes.seek(0)
-            return convert_from_bytes(use_bytes.getvalue(), dpi=300, fmt='png')
-        if source is not None:
-            return convert_from_path(source, dpi=300, fmt='png')
+            doc = fitz.open(stream=use_bytes.getvalue(), filetype='pdf')
+        elif source is not None:
+            doc = fitz.open(source)
+        else:
+            return images
+
+        for page in doc:
+            pix = page.get_pixmap(dpi=300)
+            image_data = BytesIO(pix.tobytes('png'))
+            img = Image.open(image_data).convert('RGB')
+            images.append(img)
+        return images
     except Exception:
-        logger.exception('Failed to convert PDF to images for OCR.')
-    return []
+        logger.exception('PyMuPDF PDF rendering failed.')
+
+    try:
+        pdftoppm = shutil.which('pdftoppm')
+        if not pdftoppm:
+            return images
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            if use_bytes is not None:
+                temp_pdf = os.path.join(tmpdir, 'temp.pdf')
+                use_bytes.seek(0)
+                with open(temp_pdf, 'wb') as handle:
+                    handle.write(use_bytes.getvalue())
+            elif source is not None:
+                temp_pdf = source
+            else:
+                return images
+
+            cmd = [pdftoppm, '-png', '-r', '300', temp_pdf, os.path.join(tmpdir, 'page')]
+            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            for file_name in sorted(os.listdir(tmpdir)):
+                if file_name.startswith('page') and file_name.lower().endswith('.png'):
+                    img_path = os.path.join(tmpdir, file_name)
+                    try:
+                        img = Image.open(img_path).convert('RGB')
+                        images.append(img)
+                    except Exception:
+                        logger.exception('Failed to open pdftoppm image %s', img_path)
+        return images
+    except Exception:
+        logger.exception('pdftoppm conversion failed.')
+
+    return images
 
 
 def _extract_text_from_pdf(source, use_bytes):
@@ -240,15 +551,30 @@ def _extract_text_from_pdf(source, use_bytes):
     for img in images:
         page_text = _extract_text_from_image(img)
         if page_text:
-            pages.append(page_text)
+            page_text = _normalize_extracted_text(page_text)
+            if page_text:
+                pages.append(page_text)
     return '\n\n'.join(pages).strip() if pages else None
+
+
+def _normalize_extracted_text(text: str) -> str:
+    # Normalize line breaks and reduce OCR fragmentation.
+    normalized = text.replace('\r\n', '\n').replace('\r', '\n')
+    normalized = re.sub(r'[ \t]+', ' ', normalized)
+    normalized = re.sub(r'(?<!\n)\n(?!\n)', ' ', normalized)
+    normalized = re.sub(r'\n{2,}', '\n\n', normalized)
+    normalized = re.sub(r' {2,}', ' ', normalized)
+    return normalized.strip()
 
 
 def _extract_text_from_image_bytes(data: BytesIO):
     image = _load_image_from_bytes(data)
     if image is None:
         return None
-    return _extract_text_from_image(image)
+    text = _extract_text_from_image(image)
+    if text:
+        return _normalize_extracted_text(text)
+    return None
 
 
 def _extract_text_from_text_file(source, use_bytes, ext):
@@ -329,33 +655,51 @@ def _extract_text_from_text_file(source, use_bytes, ext):
     return None
 
 
-def extract_text_from_file(file_field):
+def extract_text_from_file(file_field, return_extraction_type=False):
     source, use_bytes, ext = _get_file_bytes(file_field)
     if not ext:
-        return None
+        return None if not return_extraction_type else (None, False)
+
+    ocr_extraction = False
+    extracted_text = None
 
     if ext == '.pdf':
         if source or use_bytes:
             text = _extract_text_from_pdf(source, use_bytes)
             if text:
-                return text
-
-            try:
-                from pypdf import PdfReader
-                reader = PdfReader(use_bytes) if use_bytes else PdfReader(source)
-                return '\n'.join([p.extract_text() or '' for p in reader.pages])
-            except Exception:
-                logger.exception('PDF text extraction failed with pypdf.')
-                pass
-        return None
+                extracted_text = text
+                ocr_extraction = True
+            else:
+                try:
+                    from pypdf import PdfReader
+                    reader = PdfReader(use_bytes) if use_bytes else PdfReader(source)
+                    extracted = '\n'.join([p.extract_text() or '' for p in reader.pages]).strip()
+                    if extracted:
+                        extracted_text = extracted
+                        ocr_extraction = False
+                except Exception:
+                    logger.exception('PDF text extraction failed with pypdf.')
+                if extracted_text is None:
+                    try:
+                        import PyPDF2
+                        reader = PyPDF2.PdfReader(use_bytes) if use_bytes else PyPDF2.PdfReader(source)
+                        extracted = '\n'.join([p.extract_text() or '' for p in reader.pages]).strip()
+                        if extracted:
+                            extracted_text = extracted
+                            ocr_extraction = False
+                    except Exception:
+                        logger.exception('PDF text extraction failed with PyPDF2.')
+        if extracted_text:
+            return extracted_text if not return_extraction_type else (extracted_text, ocr_extraction)
+        return None if not return_extraction_type else (None, False)
 
     if ext in OCR_IMAGE_EXTENSIONS:
         text = _extract_text_from_image_bytes(use_bytes or BytesIO(open(source, 'rb').read()))
         if text:
-            return text
+            return (text, True) if return_extraction_type else text
 
     text = _extract_text_from_text_file(source, use_bytes, ext)
     if text:
-        return text
+        return (text, False) if return_extraction_type else text
 
-    return None
+    return None if not return_extraction_type else (None, False)
