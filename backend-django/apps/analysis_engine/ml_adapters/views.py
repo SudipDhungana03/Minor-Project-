@@ -5,6 +5,7 @@ from ..models import DetectionResult
 from apps.classroom.models import Submission
 from .ocr_engine import OCR_IMAGE_EXTENSIONS, extract_text_from_file
 from .plagiarism_vector import build_similarity_report
+from apps.analysis_engine.document_forensics import build_document_forensics_report
 import os
 import re
 import logging
@@ -188,15 +189,67 @@ def run_batch_plagiarism_analysis(request):
             'student_name': submission.student.username if getattr(submission.student, 'username', None) else '',
             'file_name': os.path.basename(submission.file.name) if submission.file else '',
             'file_url': submission.file.url if submission.file else '',
+            'file_path': submission.file.path if submission.file and hasattr(submission.file, 'path') else '',
             'text': text,
         })
 
     if not submissions:
         return Response({'error': 'No valid submissions were found.'}, status=404)
 
-    report = build_similarity_report(submissions)
-    # Include extracted text in submitted_files for frontend display
-    for idx, file_data in enumerate(report.get('submitted_files', [])):
+    similarity_report = build_similarity_report(submissions)
+    for idx, file_data in enumerate(similarity_report.get('submitted_files', [])):
         if idx < len(submissions):
             file_data['extracted_text'] = submissions[idx].get('text', '')
-    return Response(report)
+
+    regen_flag = bool(request.data.get('regen_visuals') or request.data.get('regen'))
+    forensics_report = build_document_forensics_report(submissions, regenerate_visuals=regen_flag)
+    return Response({
+        'plagiarism': similarity_report,
+        'forensics': forensics_report,
+    })
+
+
+@api_view(['GET'])
+def run_assignment_metadata_forensics(request, assignment_id):
+    """Return metadata forensics for all submissions in an assignment."""
+    # Allow optional filtering by submission IDs (comma-separated) when caller selects specific submissions
+    submission_ids_param = request.query_params.get('submission_ids')
+    submissions_qs = Submission.objects.filter(assignment_id=assignment_id).order_by('-submitted_at')
+    if submission_ids_param:
+        try:
+            ids = [int(s) for s in submission_ids_param.split(',') if s.strip()]
+            submissions_qs = submissions_qs.filter(id__in=ids)
+        except Exception:
+            # If parsing fails, fall back to full assignment list
+            pass
+
+    submissions = []
+    for submission in submissions_qs:
+        text = submission.content or ''
+        if submission.file:
+            if submission.extracted_text:
+                extracted = submission.extracted_text
+            else:
+                extracted = extract_text_from_file(submission.file)
+                if extracted:
+                    submission.extracted_text = extracted
+                    submission.save(update_fields=['extracted_text'])
+            if extracted:
+                text = f"{text}\n\n{extracted}" if text.strip() else extracted
+
+        submissions.append({
+            'id': submission.id,
+            'title': submission.assignment.title if submission.assignment_id else 'Submission',
+            'student_name': submission.student.username if getattr(submission.student, 'username', None) else '',
+            'file_name': os.path.basename(submission.file.name) if submission.file else '',
+            'file_url': submission.file.url if submission.file else '',
+            'file_path': submission.file.path if submission.file and hasattr(submission.file, 'path') else '',
+            'text': text,
+        })
+
+    if not submissions:
+        return Response({'error': 'No submissions were found for this assignment.'}, status=404)
+
+    regen_flag = bool(request.query_params.get('regen_visuals') or request.query_params.get('regen'))
+    forensics_report = build_document_forensics_report(submissions, regenerate_visuals=regen_flag)
+    return Response(forensics_report)

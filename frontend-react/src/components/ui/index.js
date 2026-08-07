@@ -5,3 +5,4 @@ export { default as Badge } from './Badge.jsx';
 export { default as PageHeader } from './PageHeader.jsx';
 export { default as EmptyState } from './EmptyState.jsx';
 export { default as Skeleton, SkeletonCard } from './Skeleton.jsx';
+export { default as Modal } from './Modal.jsx';

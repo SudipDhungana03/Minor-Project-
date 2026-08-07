@@ -3,6 +3,8 @@ import hashlib
 import io
 import os
 import re
+import zipfile
+import xml.etree.ElementTree as ET
 from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
@@ -82,6 +84,155 @@ def _coerce_submission(submission: Any) -> Dict[str, Any]:
     return data
 
 
+def _parse_ooxml_datetime(value: Any) -> Optional[str]:
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    try:
+        text = str(value).strip()
+        if text.endswith('Z'):
+            text = text[:-1]
+        return datetime.fromisoformat(text).isoformat()
+    except Exception:
+        return None
+
+
+def _parse_pdf_date(value: Any) -> Optional[str]:
+    if not value:
+        return None
+    text = str(value).strip()
+    if text.startswith('D:'):
+        text = text[2:]
+    try:
+        year = int(text[0:4])
+        month = int(text[4:6]) if len(text) >= 6 else 1
+        day = int(text[6:8]) if len(text) >= 8 else 1
+        hour = int(text[8:10]) if len(text) >= 10 else 0
+        minute = int(text[10:12]) if len(text) >= 12 else 0
+        second = int(text[12:14]) if len(text) >= 14 else 0
+        return datetime(year, month, day, hour, minute, second).isoformat()
+    except Exception:
+        return None
+
+
+def _normalize_author_match(author: str, student_name: str) -> float:
+    if not author or not student_name:
+        return 0.0
+    normalized_author = _normalize_text(author).lower()
+    normalized_student = _normalize_text(student_name).lower()
+    if normalized_student and normalized_student in normalized_author:
+        return 1.0
+    if normalized_author:
+        return 0.5
+    return 0.0
+
+
+def _extract_docx_metadata(path: str) -> Dict[str, Any]:
+    metadata: Dict[str, Any] = {}
+    if not os.path.exists(path):
+        return metadata
+
+    try:
+        if docx is not None:
+            document = docx.Document(path)
+            core_props = document.core_properties
+            metadata.update({
+                'author': core_props.author or '',
+                'original_author': core_props.author or '',
+                'last_modified_by': core_props.last_modified_by or '',
+                'created': _parse_ooxml_datetime(getattr(core_props, 'created', None)),
+                'modified': _parse_ooxml_datetime(getattr(core_props, 'modified', None)),
+                'revision': int(getattr(core_props, 'revision', 0) or 0),
+                'title': core_props.title or '',
+                'application': '',
+                'app_version': '',
+                'total_editing_time_minutes': 0,
+                'total_saves': int(getattr(core_props, 'revision', 0) or 0),
+            })
+
+        with zipfile.ZipFile(path, 'r') as zf:
+            if 'docProps/app.xml' in zf.namelist():
+                raw = zf.read('docProps/app.xml')
+                root = ET.fromstring(raw)
+                ns = {'ep': 'http://schemas.openxmlformats.org/officeDocument/2006/extended-properties'}
+                def find_ep(tag):
+                    return root.find(f'{{{ns["ep"]}}}{tag}')
+
+                metadata['application'] = (find_ep('Application').text or '') if find_ep('Application') is not None else metadata.get('application', '')
+                metadata['app_version'] = (find_ep('AppVersion').text or '') if find_ep('AppVersion') is not None else metadata.get('app_version', '')
+                metadata['total_editing_time_minutes'] = int((find_ep('TotalTime').text or '0') if find_ep('TotalTime') is not None else metadata.get('total_editing_time_minutes', 0))
+                metadata['total_saves'] = int((find_ep('Revision').text or '0') if find_ep('Revision') is not None else metadata.get('total_saves', 0))
+            if 'docProps/core.xml' in zf.namelist():
+                raw = zf.read('docProps/core.xml')
+                root = ET.fromstring(raw)
+                ns = {
+                    'dc': 'http://purl.org/dc/elements/1.1/',
+                    'cp': 'http://schemas.openxmlformats.org/package/2006/metadata/core-properties',
+                    'dcterms': 'http://purl.org/dc/terms/',
+                }
+                def find_core(tag, namespace):
+                    return root.find(f'{{{namespace}}}{tag}')
+
+                author = find_core('creator', ns['dc'])
+                metadata['author'] = (author.text or '') if author is not None else metadata.get('author', '')
+                metadata['original_author'] = metadata['author']
+                modified = find_core('modified', ns['dcterms'])
+                created = find_core('created', ns['dcterms'])
+                metadata['created'] = _parse_ooxml_datetime(created.text if created is not None else metadata.get('created'))
+                metadata['modified'] = _parse_ooxml_datetime(modified.text if modified is not None else metadata.get('modified'))
+    except Exception:
+        pass
+
+    return metadata
+
+
+def _extract_pdf_metadata(path: str) -> Dict[str, Any]:
+    metadata: Dict[str, Any] = {}
+    if not os.path.exists(path) or PdfReader is None:
+        return metadata
+
+    try:
+        reader = PdfReader(path)
+        info = reader.metadata or {}
+        metadata.update({
+            'author': info.get('/Author') or info.get('Author') or '',
+            'original_author': info.get('/Author') or info.get('Author') or '',
+            'title': info.get('/Title') or info.get('Title') or '',
+            'creator': info.get('/Creator') or info.get('Creator') or '',
+            'producer': info.get('/Producer') or info.get('Producer') or '',
+            'application': info.get('/Producer') or info.get('/Creator') or '',
+            'app_version': '',
+            'revision': int(info.get('/ModDate', '0').isdigit() and int(info.get('/ModDate', '0')) or 0),
+            'total_saves': 0,
+            'total_editing_time_minutes': 0,
+            'created': _parse_pdf_date(info.get('/CreationDate') or info.get('CreationDate')) or '',
+            'modified': _parse_pdf_date(info.get('/ModDate') or info.get('ModDate')) or '',
+        })
+        if metadata['created'] and metadata['modified']:
+            try:
+                created_dt = datetime.fromisoformat(metadata['created'])
+                modified_dt = datetime.fromisoformat(metadata['modified'])
+                diff_minutes = int(abs((modified_dt - created_dt).total_seconds()) / 60)
+                metadata['total_editing_time_minutes'] = diff_minutes
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    if not metadata.get('created') or not metadata.get('modified'):
+        try:
+            stats = os.stat(path)
+            if not metadata.get('created'):
+                metadata['created'] = datetime.fromtimestamp(stats.st_ctime).isoformat()
+            if not metadata.get('modified'):
+                metadata['modified'] = datetime.fromtimestamp(stats.st_mtime).isoformat()
+        except Exception:
+            pass
+
+    return metadata
+
+
 def _extract_text_from_path(path: Optional[str]) -> str:
     if not path:
         return ''
@@ -109,33 +260,16 @@ def _extract_metadata_from_path(path: Optional[str]) -> Dict[str, Any]:
     metadata: Dict[str, Any] = {'source_file': os.path.basename(path)}
 
     try:
-        if ext == '.docx' and docx is not None:
-            document = docx.Document(path)
-            core_props = document.core_properties
-            metadata.update({
-                'author': core_props.author or '',
-                'title': core_props.title or '',
-                'subject': core_props.subject or '',
-                'keywords': core_props.keywords or '',
-                'created': core_props.created.isoformat() if getattr(core_props, 'created', None) else '',
-                'modified': core_props.modified.isoformat() if getattr(core_props, 'modified', None) else '',
-                'paragraph_count': len(document.paragraphs),
-            })
+        if ext == '.docx':
+            file_metadata = _extract_docx_metadata(path)
+            metadata.update(file_metadata)
+            metadata['paragraph_count'] = metadata.get('paragraph_count', 0)
             return metadata
 
-        if ext == '.pdf' and PdfReader is not None:
-            reader = PdfReader(path)
-            info = reader.metadata or {}
-            metadata.update({
-                'author': info.get('/Author') or '',
-                'title': info.get('/Title') or '',
-                'subject': info.get('/Subject') or '',
-                'creator': info.get('/Creator') or '',
-                'producer': info.get('/Producer') or '',
-                'created': str(info.get('/CreationDate') or ''),
-                'modified': str(info.get('/ModDate') or ''),
-                'page_count': len(reader.pages),
-            })
+        if ext == '.pdf':
+            file_metadata = _extract_pdf_metadata(path)
+            metadata.update(file_metadata)
+            metadata['page_count'] = metadata.get('page_count', len(PdfReader(path).pages) if PdfReader is not None else 0)
             return metadata
     except Exception:
         return metadata
@@ -276,7 +410,7 @@ def _build_cluster_scatter_image(submissions: List[Dict[str, Any]], metrics: Lis
     for submission in submissions:
         metric = metric_by_id.get(submission.get('id'), {})
         rows.append({
-            'title': submission.get('title') or submission.get('student_name') or str(submission.get('id')),
+            'title': submission.get('student_name') or submission.get('title') or str(submission.get('id')),
             'cluster_id': cluster_by_id.get(submission.get('id'), -1),
             'anomaly_score': metric.get('anomaly_score', 0.0),
             'originality_score': metric.get('originality_score', 0.0),
@@ -306,9 +440,30 @@ def _build_cluster_scatter_image(submissions: List[Dict[str, Any]], metrics: Lis
     return _encode_figure(fig)
 
 
+def _parse_iso_timestamp(value: Any) -> Optional[datetime]:
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value
+    try:
+        return datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+    except Exception:
+        return None
+
+
 def _build_submission_metrics(submissions: List[Dict[str, Any]], similarity_report: Dict[str, Any]) -> List[Dict[str, Any]]:
     metrics: List[Dict[str, Any]] = []
     matrix = similarity_report.get('matrix', [])
+
+    created_dates = []
+    for submission in submissions:
+        created = submission.get('metadata', {}).get('created') or submission.get('metadata', {}).get('file_created')
+        created_dt = _parse_iso_timestamp(created)
+        if created_dt is not None:
+            created_dates.append(created_dt)
+
+    min_created = min(created_dates) if created_dates else None
+    max_created = max(created_dates) if created_dates else None
 
     for idx, submission in enumerate(submissions):
         similarities = []
@@ -325,16 +480,31 @@ def _build_submission_metrics(submissions: List[Dict[str, Any]], similarity_repo
 
         max_similarity = max(similarities)
         avg_similarity = sum(similarities) / len(similarities)
-        metadata_conflict = 0.0
-        if submission.get('metadata', {}).get('origin_hash'):
-            same_origin_count = sum(
-                1 for other in submissions
-                if other.get('metadata', {}).get('origin_hash') == submission.get('metadata', {}).get('origin_hash') and other.get('id') != submission.get('id')
-            )
-            metadata_conflict = 0.5 if same_origin_count else 0.0
+        metadata = submission.get('metadata', {})
 
-        anomaly_score = round(min(1.0, (0.6 * max_similarity) + (0.25 * avg_similarity) + (0.15 * metadata_conflict)), 3)
-        originality_score = round(max(0.0, 1.0 - anomaly_score), 3)
+        editing_time = float(metadata.get('total_editing_time_minutes') or 0)
+        total_saves = float(metadata.get('total_saves') or 0)
+        revision = float(metadata.get('revision') or 0)
+        author_match = _normalize_author_match(metadata.get('author', ''), submission.get('student_name') or '')
+
+        editing_score = min(1.0, editing_time / 120.0)
+        revision_score = min(1.0, revision / 20.0)
+        save_score = min(1.0, total_saves / 20.0)
+        save_revision_score = (revision_score + save_score) / 2.0
+
+        created_dt = _parse_iso_timestamp(metadata.get('created') or metadata.get('file_created'))
+        chronology_score = 0.5
+        if min_created and max_created and min_created != max_created and created_dt is not None:
+            normalized = (created_dt - min_created).total_seconds() / (max_created - min_created).total_seconds()
+            chronology_score = max(0.0, 1.0 - normalized)
+        elif created_dt is not None:
+            chronology_score = 1.0
+
+        similarity_factor = 1.0 - max_similarity
+        combined_similarity = (0.5 * similarity_factor) + (0.5 * chronology_score)
+
+        originality_score = round(min(1.0, (0.35 * editing_score) + (0.25 * save_revision_score) + (0.25 * author_match) + (0.15 * combined_similarity)), 3)
+        anomaly_score = round(max(0.0, 1.0 - originality_score), 3)
         risk_level = 'high' if anomaly_score >= 0.6 else 'medium' if anomaly_score >= 0.3 else 'low'
 
         metrics.append({
@@ -346,13 +516,25 @@ def _build_submission_metrics(submissions: List[Dict[str, Any]], similarity_repo
             'risk_level': risk_level,
             'max_similarity': round(max_similarity, 3),
             'avg_similarity': round(avg_similarity, 3),
+            'editing_time_minutes': round(editing_time, 1),
+            'total_saves': int(total_saves),
+            'revision': int(revision),
+            'author_match_score': round(author_match, 3),
+            'chronology_score': round(chronology_score, 3),
+            'combined_similarity_score': round(combined_similarity, 3),
+            'metadata': metadata,
         })
 
     return metrics
 
 
-def build_document_forensics_report(submissions: List[Any]) -> Dict[str, Any]:
-    """Build a JSON-serializable document forensics report for selected submissions."""
+def build_document_forensics_report(submissions: List[Any], regenerate_visuals: bool = False) -> Dict[str, Any]:
+    """Build a JSON-serializable document forensics report for selected submissions.
+
+    Args:
+        submissions: list of submission dicts or objects to include in the report.
+        regenerate_visuals: when True, force rebuilding of heatmap and scatter visualizations.
+    """
     normalized_submissions = [_coerce_submission(submission) for submission in submissions or []]
 
     for submission in normalized_submissions:
@@ -384,6 +566,9 @@ def build_document_forensics_report(submissions: List[Any]) -> Dict[str, Any]:
                 'student_name': submission.get('student_name') or '',
                 'anomaly_score': metric.get('anomaly_score', 0.0) if metric else 0.0,
                 'originality_score': metric.get('originality_score', 0.0) if metric else 0.0,
+                'metadata': submission.get('metadata', {}),
+                'file_name': submission.get('file_name') or '',
+                'file_url': submission.get('file_url') or '',
             })
         weighted_anomaly = round(sum(member['anomaly_score'] for member in cluster_members) / len(cluster_members), 3) if cluster_members else 0.0
         weighted_originality = round(sum(member['originality_score'] for member in cluster_members) / len(cluster_members), 3) if cluster_members else 0.0
@@ -418,7 +603,9 @@ def build_document_forensics_report(submissions: List[Any]) -> Dict[str, Any]:
         numeric_row.extend([round(cell.get('overall_score', 0.0), 3) for cell in row])
         numeric_matrix.append(numeric_row)
 
-    labels = [submission.get('title') or submission.get('student_name') or str(submission.get('id')) for submission in normalized_submissions]
+    labels = [submission.get('student_name') or submission.get('title') or f"Submission {submission.get('id')}" for submission in normalized_submissions]
+    # Always (re)build visualizations on request when supported. The flag is provided for callers
+    # to indicate intent, but the builder functions are invoked regardless so images are current.
     similarity_heatmap_image = _build_similarity_heatmap_image(similarity_report.get('matrix', []), labels)
     cluster_scatter_image = _build_cluster_scatter_image(normalized_submissions, metrics)
 
