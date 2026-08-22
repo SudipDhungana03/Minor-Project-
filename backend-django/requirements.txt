@@ -7,3 +7,14 @@ PyPDF2
 python-pptx
 requests
 firecrawl-py
+pytesseract
+Pillow
+pdf2image
+easyocr
+numpy
+sentencepiece
+tiktoken
+google-cloud-vision
+torch
+transformers
+opencv-python-headless

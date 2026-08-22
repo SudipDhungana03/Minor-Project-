@@ -8,7 +8,12 @@ SECRET_KEY = 'django-insecure-development-key-change-this-in-production'
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    'testserver',
+]
 
 # Core Django Apps + Your Custom Apps Setup
 INSTALLED_APPS = [

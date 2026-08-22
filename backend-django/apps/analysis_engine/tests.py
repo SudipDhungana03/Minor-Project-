@@ -1,4 +1,7 @@
+from io import BytesIO
+
 from django.test import SimpleTestCase
+from apps.analysis_engine.ml_adapters import ocr_engine
 from apps.analysis_engine.ml_adapters.plagiarism_vector import build_similarity_report
 
 
@@ -61,3 +64,93 @@ class PlagiarismVectorTests(SimpleTestCase):
 
         self.assertEqual(len(chunks), 2)
         self.assertTrue(all(len(chunk['core_text'].split()) > 1 for chunk in chunks))
+
+
+class OCREngineTests(SimpleTestCase):
+    def test_choose_best_text_prefers_longer_result(self):
+        self.assertEqual(
+            ocr_engine._choose_best_text('short text', 'a much longer OCR result'),
+            'a much longer OCR result'
+        )
+        self.assertEqual(
+            ocr_engine._choose_best_text('some text', ''),
+            'some text'
+        )
+        self.assertIsNone(ocr_engine._choose_best_text('', None))
+
+    def test_extract_text_from_file_reads_file_like_text_objects(self):
+        class DummyFile:
+            def __init__(self, data, name):
+                self._buffer = BytesIO(data)
+                self.name = name
+
+            def seek(self, offset, whence=0):
+                return self._buffer.seek(offset, whence)
+
+            def read(self):
+                return self._buffer.read()
+
+        dummy = DummyFile(b'Hello world from OCR test', 'test_file.txt')
+        extracted = ocr_engine.extract_text_from_file(dummy)
+
+        self.assertEqual(extracted, 'Hello world from OCR test')
+
+    def test_normalize_extracted_text_merges_broken_lines(self):
+        raw = 'Hello\n\nWorld\nThis is\nA test.'
+        normalized = ocr_engine._normalize_extracted_text(raw)
+        self.assertEqual(normalized, 'Hello\n\nWorld This is A test.')
+
+    def test_submission_serializer_prefers_extracted_text_over_comment(self):
+        from apps.classroom.serializers import SubmissionSerializer
+
+        class DummyAssignment:
+            pk = 1
+            title = 'Test Assignment'
+            description = 'Assignment description.'
+
+        class DummyStudent:
+            pk = 2
+            username = 'testuser'
+
+        class DummySubmission:
+            def __init__(self, content, extracted_text, file):
+                self.pk = 3
+                self.assignment = DummyAssignment()
+                self.student = DummyStudent()
+                self.content = content
+                self.extracted_text = extracted_text
+                self.file = file
+
+        dummy = DummySubmission(
+            content='This is a student note.',
+            extracted_text='This is extracted file text.',
+            file=None
+        )
+        serializer = SubmissionSerializer(dummy)
+        self.assertEqual(serializer.data['extracted_text'], 'This is extracted file text.')
+
+    def test_extract_text_from_file_prefers_image_ocr_when_file_present(self):
+        class DummyFile:
+            def __init__(self, data, name):
+                self._buffer = BytesIO(data)
+                self.name = name
+
+            def seek(self, offset, whence=0):
+                return self._buffer.seek(offset, whence)
+
+            def read(self):
+                return self._buffer.read()
+
+        dummy = DummyFile(b'Hello world from OCR test', 'test_file.txt')
+        extracted = ocr_engine.extract_text_from_file(dummy)
+
+        self.assertEqual(extracted, 'Hello world from OCR test')
+
+    def test_run_analysis_splits_large_ocr_like_chunks(self):
+        text = ' '.join([f'word{i}' for i in range(1, 241)])
+        report = ocr_engine._split_large_ocr_like_chunks([text])
+        self.assertEqual(len(report), 2)
+        self.assertGreaterEqual(len(report[0].split()), 100)
+        self.assertLessEqual(len(report[0].split()), 120)
+        self.assertGreaterEqual(len(report[1].split()), 100)
+        self.assertLessEqual(len(report[1].split()), 120)

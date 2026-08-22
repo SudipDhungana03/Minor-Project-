@@ -2,7 +2,7 @@ import os
 from rest_framework import serializers
 from .models import Classroom, Assignment, Submission, JoinRequest
 from apps.analysis_engine.models import DetectionResult
-from apps.analysis_engine.ml_adapters.views import _extract_text_from_file
+from apps.analysis_engine.ml_adapters.ocr_engine import extract_text_from_file
 
 class ClassroomSerializer(serializers.ModelSerializer):
     class Meta:
@@ -38,10 +38,14 @@ class SubmissionSerializer(serializers.ModelSerializer):
             return None
 
     def get_extracted_text(self, obj):
+        if obj.extracted_text:
+            return obj.extracted_text
+        if obj.file:
+            extracted = extract_text_from_file(obj.file)
+            if extracted:
+                return extracted
         if obj.content and obj.content.strip():
             return obj.content
-        if obj.file:
-            return _extract_text_from_file(obj.file)
         return None
 
     def get_file_exists(self, obj):
