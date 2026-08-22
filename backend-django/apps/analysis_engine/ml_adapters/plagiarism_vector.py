@@ -80,9 +80,26 @@ OVERLAP_WORDS = 40               # ~25-50 words of context above/below
 LARGE_PARAGRAPH_SENTENCES = 8
 
 
-def _fallback_sentence_groups(sentences):
+def _fallback_sentence_groups(sentences, paragraph_text=None):
     """Group a flat list of sentences into core windows of ~4 sentences /
     ~100 words. Returns a list of (start_idx, end_idx) tuples (end exclusive)."""
+    if paragraph_text and len(sentences) == 1:
+        words = paragraph_text.split()
+        if len(words) > 200:
+            groups = []
+            i = 0
+            while i < len(words):
+                end = min(i + WORDS_PER_CHUNK, len(words))
+                if end < len(words) and len(words) - end < WORDS_PER_CHUNK:
+                    end = len(words)
+                groups.append((i, end))
+                i = end
+            if len(groups) > 1 and (groups[-1][1] - groups[-1][0]) < WORDS_PER_CHUNK:
+                prev_start, prev_end = groups[-2]
+                groups[-2] = (prev_start, groups[-1][1])
+                groups.pop()
+            return groups
+
     groups = []
     n = len(sentences)
     i = 0
@@ -95,6 +112,12 @@ def _fallback_sentence_groups(sentences):
             count += 1
             i += 1
         groups.append((start, i))
+
+    if len(groups) > 1 and (groups[-1][1] - groups[-1][0]) < SENTENCES_PER_CHUNK:
+        prev_start, prev_end = groups[-2]
+        groups[-2] = (prev_start, groups[-1][1])
+        groups.pop()
+
     return groups
 
 
@@ -146,7 +169,8 @@ def _build_chunks_from_paragraphs(paragraphs):
         if not sentences:
             continue
 
-        recognizable_paragraph = not single_paragraph_doc and len(sentences) <= LARGE_PARAGRAPH_SENTENCES
+        paragraph_word_count = len(paragraph.split())
+        recognizable_paragraph = not single_paragraph_doc and len(sentences) <= LARGE_PARAGRAPH_SENTENCES and paragraph_word_count <= WORDS_PER_CHUNK
 
         if recognizable_paragraph:
             # Whole paragraph = one chunk, no overlap needed.
@@ -156,13 +180,23 @@ def _build_chunks_from_paragraphs(paragraphs):
 
         # Unstructured / large block: generate 4-sentence / 100-word chunks
         # with an overlap window used only for scoring context.
-        for start, end in _fallback_sentence_groups(sentences):
-            core_text = ' '.join(sentences[start:end]).strip()
+        for start, end in _fallback_sentence_groups(sentences, paragraph):
+            if paragraph_word_count > 200 and len(sentences) == 1:
+                words = paragraph.split()
+                core_text = ' '.join(words[start:end]).strip()
+                prefix = ' '.join(words[max(0, start - 20):start]).strip()
+                suffix = ' '.join(words[end:min(len(words), end + 20)]).strip()
+                compare_text = ' '.join(part for part in (prefix, core_text, suffix) if part).strip()
+            else:
+                core_text = ' '.join(sentences[start:end]).strip()
+                if not core_text:
+                    continue
+                prefix = _context_prefix(sentences, start)
+                suffix = _context_suffix(sentences, end)
+                compare_text = ' '.join(part for part in (prefix, core_text, suffix) if part).strip()
+
             if not core_text:
                 continue
-            prefix = _context_prefix(sentences, start)
-            suffix = _context_suffix(sentences, end)
-            compare_text = ' '.join(part for part in (prefix, core_text, suffix) if part).strip()
             chunks.append({'core_text': core_text, 'compare_text': compare_text})
 
     return chunks

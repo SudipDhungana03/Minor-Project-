@@ -332,7 +332,7 @@ const SubmissionList = ({ assignmentId }) => {
                                                                         {cell.is_diagonal ? (
                                                                             <span style={{ color: '#64748b', fontWeight: 600 }}>Self</span>
                                                                         ) : (
-                                                                            <button onClick={() => openPairComparison(getSubmissionById(leftFile?.id), getSubmissionById(rightFile?.id), cell)} style={{ color: '#fff', background: cell.verdict === 'High similarity' ? '#c2410c' : cell.verdict === 'Moderate similarity' ? '#ca8a04' : cell.verdict === 'Low similarity' ? '#2563eb' : '#10b981', border: 'none', borderRadius: '999px', padding: '6px 12px', cursor: 'pointer', fontWeight: 700 }}>
+                                                                            <button onClick={() => openPairComparison(leftFile, rightFile, cell)} style={{ color: '#fff', background: cell.verdict === 'High similarity' ? '#c2410c' : cell.verdict === 'Moderate similarity' ? '#ca8a04' : cell.verdict === 'Low similarity' ? '#2563eb' : '#10b981', border: 'none', borderRadius: '999px', padding: '6px 12px', cursor: 'pointer', fontWeight: 700 }}>
                                                                                 {cell.verdict}
                                                                             </button>
                                                                         )}
@@ -452,21 +452,21 @@ const SubmissionList = ({ assignmentId }) => {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '18px' }}>
                             <div style={{ border: '1px solid #e2e8f0', borderRadius: '14px', padding: '18px', background: '#f8fafc' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                                    <h4 style={{ marginTop: 0, marginBottom: 0 }}>{comparisonPair.leftSubmission?.student_username || comparisonPair.leftSubmission?.student || 'Left submission'}</h4>
+                                    <h4 style={{ marginTop: 0, marginBottom: 0 }}>{comparisonPair.leftSubmission?.student_username || comparisonPair.leftSubmission?.student || comparisonPair.leftSubmission?.student_name || comparisonPair.leftSubmission?.title || 'Left submission'}</h4>
                                     <span style={{ background: '#eef2ff', color: '#3730a3', borderRadius: '999px', padding: '6px 12px', fontSize: '0.85rem', fontWeight: 700 }}>Score: {comparisonPair.cell?.overall_score ?? 0}</span>
                                 </div>
                                 <div style={{ marginTop: '10px', minHeight: '280px', maxHeight: '420px', overflowY: 'auto', lineHeight: 1.75, whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
                                     {(() => {
                                         // Always render the ORIGINAL document content (extracted text preserving
                                         // its original arrangement) with the plagiarism highlights applied in place.
-                                        const leftFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.leftSubmission.id);
+                                        const leftFile = plagiarismReport?.submitted_files?.find((f) => String(f.id) === String(comparisonPair.leftSubmission?.id));
                                         const displayText = leftFile?.text || comparisonPair.leftSubmission?.content || '';
                                         return (
                                             <div>
                                                 {highlightText(displayText, annotateSideHighlights(comparisonPair.cell?.highlights, 'left'))}
-                                                {comparisonPair.leftSubmission?.file && (
+                                                {(comparisonPair.leftSubmission?.file || comparisonPair.leftSubmission?.file_url) && (
                                                     <div style={{ marginTop: '10px' }}>
-                                                        <a href={getMediaUrl(comparisonPair.leftSubmission.file)} target="_blank" rel="noreferrer" style={{ color: '#4f46e5', fontWeight: 600, fontSize: '0.85rem' }}>
+                                                        <a href={getMediaUrl(comparisonPair.leftSubmission.file || comparisonPair.leftSubmission.file_url)} target="_blank" rel="noreferrer" style={{ color: '#4f46e5', fontWeight: 600, fontSize: '0.85rem' }}>
                                                             Open original file
                                                         </a>
                                                     </div>
@@ -478,20 +478,20 @@ const SubmissionList = ({ assignmentId }) => {
                             </div>
                             <div style={{ border: '1px solid #e2e8f0', borderRadius: '14px', padding: '18px', background: '#f8fafc' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                                    <h4 style={{ marginTop: 0, marginBottom: 0 }}>{comparisonPair.rightSubmission?.student_username || comparisonPair.rightSubmission?.student || 'Right submission'}</h4>
+                                    <h4 style={{ marginTop: 0, marginBottom: 0 }}>{comparisonPair.rightSubmission?.student_username || comparisonPair.rightSubmission?.student || comparisonPair.rightSubmission?.student_name || comparisonPair.rightSubmission?.title || 'Right submission'}</h4>
                                     <span style={{ background: comparisonPair.cell?.verdict === 'High similarity' ? '#fee2e2' : comparisonPair.cell?.verdict === 'Moderate similarity' ? '#fef3c7' : comparisonPair.cell?.verdict === 'Low similarity' ? '#e0f2fe' : '#ecfdf5', color: comparisonPair.cell?.verdict === 'High similarity' ? '#991b1b' : comparisonPair.cell?.verdict === 'Moderate similarity' ? '#92400e' : comparisonPair.cell?.verdict === 'Low similarity' ? '#1d4ed8' : '#065f46', borderRadius: '999px', padding: '6px 12px', fontSize: '0.85rem', fontWeight: 700 }}>{comparisonPair.cell?.verdict}</span>
                                 </div>
                                 <div style={{ marginTop: '10px', minHeight: '280px', maxHeight: '420px', overflowY: 'auto', lineHeight: 1.75, whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
                                     {(() => {
                                         // Always render the ORIGINAL document content with highlights in place.
-                                        const rightFile = batchReport?.submitted_files?.find((f) => f.id === comparisonPair.rightSubmission.id);
+                                        const rightFile = plagiarismReport?.submitted_files?.find((f) => String(f.id) === String(comparisonPair.rightSubmission?.id));
                                         const displayText = rightFile?.text || comparisonPair.rightSubmission?.content || '';
                                         return (
                                             <div>
                                                 {highlightText(displayText, annotateSideHighlights(comparisonPair.cell?.highlights, 'right'))}
-                                                {comparisonPair.rightSubmission?.file && (
+                                                {(comparisonPair.rightSubmission?.file || comparisonPair.rightSubmission?.file_url) && (
                                                     <div style={{ marginTop: '10px' }}>
-                                                        <a href={getMediaUrl(comparisonPair.rightSubmission.file)} target="_blank" rel="noreferrer" style={{ color: '#4f46e5', fontWeight: 600, fontSize: '0.85rem' }}>
+                                                        <a href={getMediaUrl(comparisonPair.rightSubmission.file || comparisonPair.rightSubmission.file_url)} target="_blank" rel="noreferrer" style={{ color: '#4f46e5', fontWeight: 600, fontSize: '0.85rem' }}>
                                                             Open original file
                                                         </a>
                                                     </div>
