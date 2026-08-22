@@ -18,3 +18,8 @@ google-cloud-vision
 torch
 transformers
 opencv-python-headless
+
+# Visualization dependencies for seaborn / matplotlib heatmaps
+matplotlib
+seaborn
+pandas

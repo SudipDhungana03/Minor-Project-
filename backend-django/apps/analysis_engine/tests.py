@@ -1,6 +1,7 @@
 from io import BytesIO
 
 from django.test import SimpleTestCase
+from apps.analysis_engine import document_forensics
 from apps.analysis_engine.ml_adapters import ocr_engine
 from apps.analysis_engine.ml_adapters.plagiarism_vector import build_similarity_report
 
@@ -64,6 +65,41 @@ class PlagiarismVectorTests(SimpleTestCase):
 
         self.assertEqual(len(chunks), 2)
         self.assertTrue(all(len(chunk['core_text'].split()) > 1 for chunk in chunks))
+
+
+class DocumentForensicsTests(SimpleTestCase):
+    def test_build_document_forensics_report_returns_cluster_scores_and_verdict(self):
+        submissions = [
+            {
+                'id': 1,
+                'student_name': 'Alice',
+                'title': 'Alice draft',
+                'text': 'Alpha beta gamma delta epsilon zeta eta theta iota kappa.',
+                'file_name': 'alice.docx',
+                'submitted_at': '2025-01-01T10:00:00Z',
+            },
+            {
+                'id': 2,
+                'student_name': 'Bob',
+                'title': 'Bob draft',
+                'text': 'Alpha beta gamma delta epsilon zeta eta theta iota kappa.',
+                'file_name': 'bob.docx',
+                'submitted_at': '2025-01-02T10:00:00Z',
+            },
+        ]
+
+        report = document_forensics.build_document_forensics_report(submissions)
+
+        self.assertEqual(report['summary']['selected_count'], 2)
+        self.assertTrue(report['clusters'])
+        cluster = report['clusters'][0]
+        self.assertIn('cluster_id', cluster)
+        self.assertIn('members', cluster)
+        self.assertIn('weighted_originality_score', cluster)
+        self.assertIn('weighted_anomaly_score', cluster)
+        self.assertIn('likely_original_author', cluster)
+        self.assertTrue(cluster['likely_original_author'])
+        self.assertIn('visualization', report)
 
 
 class OCREngineTests(SimpleTestCase):

@@ -13,11 +13,24 @@ __pycache__/
 backend-django/env/
 
 frontend-react/node_modules/
+frontend-react/dist/
 
-frontend-react/dist/\n# Ignore uploaded documents and temp notes\nbackend-django/media/*\n!backend-django/media/.gitkeep\nfrontend-react/ANALYSIS_NOTE.md\n
+# Ignore uploaded documents and temp notes
+backend-django/media/*
+!backend-django/media/.gitkeep
+backend-django/debug*.txt
+backend-django/tmp*.*
+backend-django/apps/analysis_engine/ml_adapters/*.bak*
+backend-django/apps/classroom/migrations/*.pyc
+frontend-react/src/components/*.bak*
+frontend-react/src/data/
+frontend-react/ANALYSIS_NOTE.md
+
 node_modules/
 dist/
 build/
 .next/
 
 *.tsbuildinfo
+.DS_Store
+*.log

@@ -1,8 +1,11 @@
+import logging
 import os
 from rest_framework import serializers
 from .models import Classroom, Assignment, Submission, JoinRequest
 from apps.analysis_engine.models import DetectionResult
 from apps.analysis_engine.ml_adapters.ocr_engine import extract_text_from_file
+
+logger = logging.getLogger(__name__)
 
 class ClassroomSerializer(serializers.ModelSerializer):
     class Meta:
@@ -41,9 +44,22 @@ class SubmissionSerializer(serializers.ModelSerializer):
         if obj.extracted_text:
             return obj.extracted_text
         if obj.file:
-            extracted = extract_text_from_file(obj.file)
-            if extracted:
-                return extracted
+            file_missing = False
+            try:
+                path = obj.file.path
+                if path and not os.path.exists(path):
+                    file_missing = True
+            except Exception:
+                file_missing = True
+
+            if not file_missing:
+                try:
+                    extracted = extract_text_from_file(obj.file)
+                except Exception:
+                    logger.exception('Failed to extract text from submission file: %s', getattr(obj.file, 'name', None))
+                    extracted = None
+                if extracted:
+                    return extracted
         if obj.content and obj.content.strip():
             return obj.content
         return None

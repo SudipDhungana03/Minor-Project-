@@ -429,6 +429,8 @@ def _get_file_bytes(file_field):
             try:
                 file_field.open('rb')
                 use_bytes = BytesIO(file_field.read())
+            except FileNotFoundError:
+                logger.warning('Submission file not found for extraction: %s', name or url)
             except Exception:
                 logger.exception('Failed to read FileField contents for extraction: %s', name or url)
             finally:
@@ -437,7 +439,13 @@ def _get_file_bytes(file_field):
                 except Exception:
                     pass
 
-    if source is None and use_bytes is None and hasattr(file_field, 'read'):
+    read_available = False
+    try:
+        read_available = hasattr(file_field, 'read')
+    except Exception:
+        read_available = False
+
+    if source is None and use_bytes is None and read_available:
         try:
             file_field.seek(0)
         except Exception:
@@ -555,6 +563,26 @@ def _extract_text_from_pdf(source, use_bytes):
             if page_text:
                 pages.append(page_text)
     return '\n\n'.join(pages).strip() if pages else None
+
+
+def _split_large_ocr_like_chunks(chunks, min_words=100, max_words=120):
+    split_chunks = []
+
+    for chunk in chunks:
+        words = chunk.split()
+        if len(words) <= max_words:
+            split_chunks.append(chunk)
+            continue
+
+        idx = 0
+        while idx < len(words):
+            end = min(idx + max_words, len(words))
+            if len(words) - end < min_words and len(words) - idx > max_words:
+                end = len(words)
+            split_chunks.append(' '.join(words[idx:end]).strip())
+            idx = end
+
+    return split_chunks
 
 
 def _normalize_extracted_text(text: str) -> str:
