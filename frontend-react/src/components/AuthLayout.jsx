@@ -22,7 +22,7 @@ const AuthLayout = ({ title, subtitle, children }) => {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-10">
-      <div className="grid w-full max-w-6xl overflow-hidden rounded-3xl bg-white shadow-lift md:grid-cols-2">
+      <div className="grid w-full max-w-7xl overflow-hidden rounded-3xl bg-white shadow-lift md:grid-cols-[3fr_2fr]">
         <div className="relative hidden aspect-[3/2] w-full self-center overflow-hidden bg-slate-950 md:block">
           {slides.map((slide, index) => (
             <div
@@ -52,7 +52,7 @@ const AuthLayout = ({ title, subtitle, children }) => {
           </div>
         </div>
 
-        <div className="flex flex-col justify-center p-8 sm:p-12">
+        <div className="flex flex-col justify-center bg-white p-8 sm:p-12 lg:p-16">
           <div className="mb-6 flex items-center gap-2 text-lg font-extrabold text-ink md:hidden">
             <span>OriginalityGuard</span>
           </div>
