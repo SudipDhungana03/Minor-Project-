@@ -250,22 +250,31 @@ const SubmissionList = ({ assignmentId }) => {
             {showBatchModal && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
                     <div style={{ background: '#fff', borderRadius: '18px', width: '100%', maxWidth: '1100px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', boxShadow: '0 20px 60px rgba(15, 23, 42, 0.3)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                            <div>
-                                <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Batch plagiarism review</h3>
-                                <p style={{ margin: '4px 0 0', color: '#64748b' }}>Run plagiarism comparisons first, then inspect metadata forensics for the selected submissions.</p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                <span aria-hidden="true" style={{ display: 'inline-flex', width: '64px', height: '64px', flexShrink: 0, alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)', color: '#4338ca', boxShadow: 'inset 0 0 0 1px #dbeafe' }}>
+                                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="M9 12l2 2 4-4" /></svg>
+                                </span>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.75rem', lineHeight: 1.15, fontWeight: 800, color: '#0f172a' }}>Batch plagiarism review</h3>
+                                    <p style={{ margin: '7px 0 0', color: '#64748b', fontSize: '0.98rem' }}>Run plagiarism comparisons first, then inspect metadata forensics for the selected submissions.</p>
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                <button onClick={toggleSelectAll} style={{ padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', border: '1px solid #cbd5e1', background: '#f8fafc' }}>
-                                    {selectedIds.length === submissions.length ? 'Clear All' : 'Select All'}
-                                </button>
-                                <button onClick={handleBatchAnalysis} disabled={batchLoading} style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '10px', padding: '8px 12px', cursor: batchLoading ? 'wait' : 'pointer', fontWeight: 700 }}>
-                                    {batchLoading ? 'Comparing...' : 'Run plagiarism'}
-                                </button>
-                                <button onClick={() => { setShowBatchModal(false); setBatchReport(null); setBatchError(''); setComparisonPair(null); }} style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: '10px', padding: '8px 12px', cursor: 'pointer' }}>
-                                    Close
-                                </button>
-                            </div>
+                            <button onClick={() => navigate(`/assignment/${assignmentId}/metadata-forensics?submission_ids=${selectedIds.join(',')}`)} disabled={selectedIds.length === 0} style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', padding: '14px 20px', borderRadius: '12px', border: 'none', background: selectedIds.length === 0 ? '#94a3b8' : 'linear-gradient(135deg, #1554e8, #1644bd)', color: '#fff', cursor: selectedIds.length === 0 ? 'not-allowed' : 'pointer', fontWeight: 800, fontSize: '0.96rem', boxShadow: selectedIds.length === 0 ? 'none' : '0 8px 18px rgba(21, 84, 232, 0.24)' }}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="M9 12l2 2 4-4" /></svg>
+                                Run metadata forensics <span aria-hidden="true" style={{ fontSize: '1.35rem', lineHeight: 0 }}>→</span>
+                            </button>
+                        </div>
+                        <div style={{ marginTop: '24px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <button onClick={toggleSelectAll} style={{ padding: '12px 18px', borderRadius: '10px', cursor: 'pointer', border: '1px solid #cbd5e1', background: '#fff', color: '#0f172a', fontWeight: 700 }}>
+                                {selectedIds.length === submissions.length ? 'Clear All' : 'Select All'}
+                            </button>
+                            <button onClick={handleBatchAnalysis} disabled={batchLoading} style={{ display: 'inline-flex', alignItems: 'center', gap: '9px', background: '#1554e8', color: '#fff', border: 'none', borderRadius: '10px', padding: '12px 18px', cursor: batchLoading ? 'wait' : 'pointer', fontWeight: 800, boxShadow: '0 8px 18px rgba(21, 84, 232, 0.2)' }}>
+                                <span aria-hidden="true" style={{ fontSize: '1.1rem' }}>▷</span>{batchLoading ? 'Comparing...' : 'Run plagiarism'}
+                            </button>
+                            <button onClick={() => { setShowBatchModal(false); setBatchReport(null); setBatchError(''); setComparisonPair(null); }} style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: '10px', padding: '12px 18px', cursor: 'pointer', color: '#0f172a', fontWeight: 700 }}>
+                                Close
+                            </button>
                         </div>
                         <div style={{ marginTop: '16px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                             <button onClick={() => setActiveBatchTab('plagiarism')} style={{ padding: '8px 12px', borderRadius: '10px', border: activeBatchTab === 'plagiarism' ? '1px solid #4f46e5' : '1px solid #cbd5e1', background: activeBatchTab === 'plagiarism' ? '#eef2ff' : '#f8fafc', color: activeBatchTab === 'plagiarism' ? '#1d4ed8' : '#334155', cursor: 'pointer' }}>
