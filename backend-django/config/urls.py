@@ -1,11 +1,16 @@
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.conf import settings
+from django.http import JsonResponse
 from django.conf.urls.static import static
 from django.views.static import serve as static_serve
 from django.views.decorators.clickjacking import xframe_options_exempt
 
+def health_check(request):
+    return JsonResponse({'status': 'ok'})
+
 urlpatterns = [
+    path('health/', health_check, name='health-check'),
     # Reverted to your exact previous admin configuration
     path('admin/', admin.site.join if hasattr(admin.site, 'join') else admin.site.urls),
 
