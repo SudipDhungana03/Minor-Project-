@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import API from '../services/api';
-import { ORGANIZATIONS } from '../data/organizations';
+import OrganizationAutocomplete from '../components/OrganizationAutocomplete.jsx';
 
-const Settings = () => {
+const Settings = ({ theme, onThemeChange }) => {
   const [profile, setProfile] = useState({ name: '', email: '' });
   const [selectedOrganization, setSelectedOrganization] = useState('');
-  const [customOrganization, setCustomOrganization] = useState('');
   const [editing, setEditing] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -19,10 +18,7 @@ const Settings = () => {
         const res = await API.get('/api/user/profile/');
         setProfile({ name: res.data.name || '', email: res.data.email || '', username: res.data.username || '' });
 
-        const currentOrg = res.data.organization || '';
-        const matchingOrg = ORGANIZATIONS.some((org) => org.value === currentOrg && currentOrg !== '');
-        setSelectedOrganization(matchingOrg ? currentOrg : (currentOrg ? 'Other' : ''));
-        setCustomOrganization(matchingOrg ? '' : currentOrg);
+        setSelectedOrganization(res.data.organization || '');
 
         if (res.data.avatar_url) setPreview(res.data.avatar_url);
       } catch (err) {
@@ -32,15 +28,11 @@ const Settings = () => {
     load();
   }, []);
 
-  const updateOrganizationState = (org = '') => {
-    const matchingOrg = ORGANIZATIONS.some((item) => item.value === org && org !== '');
-    setSelectedOrganization(matchingOrg ? org : org ? 'Other' : '');
-    setCustomOrganization(matchingOrg ? '' : org || '');
-  };
+  const updateOrganizationState = (org = '') => setSelectedOrganization(org);
 
   const handleChange = (e) => setProfile({ ...profile, [e.target.name]: e.target.value });
   const handlePwdChange = (e) => setPasswords({ ...passwords, [e.target.name]: e.target.value });
-  const selectedOrgValue = selectedOrganization === 'Other' ? customOrganization : selectedOrganization;
+  const selectedOrgValue = selectedOrganization.trim();
 
   const handleFile = (e) => {
     const f = e.target.files && e.target.files[0];
@@ -121,37 +113,14 @@ const Settings = () => {
               <input name="name" value={profile.name} onChange={handleChange} className="block w-full border rounded-md p-2 mt-1" disabled={!editing} />
 
               <label className="text-sm text-slate-600 mt-3">Organization</label>
-              <select
-                name="organization"
-                value={selectedOrganization}
-                onChange={(e) => {
-                  const value = e.target.value;
+              <OrganizationAutocomplete
+                value={selectedOrgValue}
+                onChange={(value) => {
                   setSelectedOrganization(value);
-                  if (value !== 'Other') setCustomOrganization('');
                 }}
-                className="block w-full border rounded-md p-2 mt-1"
                 disabled={!editing}
                 required
-              >
-                {ORGANIZATIONS.map((org) => (
-                  <option key={org.value} value={org.value}>
-                    {org.label}
-                  </option>
-                ))}
-              </select>
-
-              {selectedOrganization === 'Other' && (
-                <input
-                  name="customOrganization"
-                  type="text"
-                  value={customOrganization}
-                  onChange={(e) => setCustomOrganization(e.target.value)}
-                  placeholder="Type your university, school, or college"
-                  className="block w-full border rounded-md p-2 mt-3"
-                  disabled={!editing}
-                  required
-                />
-              )}
+              />
 
               <label className="text-sm text-slate-600 mt-3">Email (read-only)</label>
               <input name="email" value={profile.email} onChange={handleChange} disabled={!editing} className={editing ? 'block w-full border rounded-md p-2 mt-1' : 'block w-full border rounded-md p-2 mt-1 bg-slate-50'} />
@@ -172,6 +141,29 @@ const Settings = () => {
         </div>
           {message && <div className="text-sm text-emerald-600">{message}</div>}
 
+        <section className="theme-settings mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Appearance</h2>
+            <p className="mt-1 text-sm text-slate-500">Choose how OriginalityGuard looks on this device.</p>
+          </div>
+          <div className="mt-4 inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm" role="group" aria-label="Color theme">
+            {[
+              ['light', '☀ Light'],
+              ['dark', '☾ Dark'],
+              ['system', '◐ System'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onThemeChange(value)}
+                aria-pressed={theme === value}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${theme === value ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </section>
         <hr className="my-6" />
 
         <form onSubmit={changePassword} className="space-y-3 max-w-md">

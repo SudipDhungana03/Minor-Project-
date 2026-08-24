@@ -5,7 +5,32 @@ import { Card, Button, Badge, Modal } from './ui';
 
 const STAT_CARD = 'rounded-[28px] p-5 shadow-soft border border-slate-200 bg-white';
 const PANEL = 'rounded-[28px] border border-slate-200 bg-white p-6 shadow-soft';
+const HEATMAP_COLOR = (score) => {
+  const safeScore = Math.max(0, Math.min(1, Number(score) || 0));
+  return `hsl(217, ${35 + (safeScore * 50)}%, ${97 - (safeScore * 52)}%)`;
+};
 
+const FACTOR_LABELS = {
+  editing_history: 'Editing history',
+  saves_and_revisions: 'Saves & revisions',
+  author_match: 'Author identity match',
+  similarity_and_chronology: 'Text similarity & chronology',
+};
+
+const formatPercent = (value) => `${((Number(value) || 0) * 100).toFixed(1)}%`;
+
+function OriginalityScoreTooltip({ metrics, visible }) {
+  const components = metrics?.originality_components;
+  if (!components) return null;
+  return (
+    <div role="tooltip" className={`pointer-events-none absolute bottom-full right-0 z-50 mb-3 w-80 rounded-xl border border-slate-200 bg-slate-900 p-4 text-left text-white shadow-xl transition-all duration-150 ${visible ? 'visible opacity-100' : 'invisible opacity-0'}`}>
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-indigo-200">Originality calculation</p>
+      <p className="mt-2 font-mono text-xs text-slate-300">E × 35% + R × 25% + A × 25% + S × 15%</p>
+      <div className="mt-3 space-y-2">{Object.entries(components).map(([key, component]) => (<div key={key} className="flex items-center justify-between gap-3 text-xs"><span className="text-slate-300">{FACTOR_LABELS[key] || key} ({formatPercent(component.weight)})</span><span className="font-bold text-white">{formatPercent(component.contribution)}</span></div>))}</div>
+      <div className="mt-3 flex items-center justify-between border-t border-slate-700 pt-3"><span className="text-xs font-semibold text-slate-300">Final score</span><span className="text-base font-bold text-white">{formatPercent(metrics.originality_score)}</span></div>
+    </div>
+  );
+}
 const MetadataForensics = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -15,6 +40,7 @@ const MetadataForensics = () => {
   const [activeCluster, setActiveCluster] = useState(null);
   const [expandedMember, setExpandedMember] = useState(null);
   const [showOriginalModal, setShowOriginalModal] = useState(false);
+  const [hoveredOriginality, setHoveredOriginality] = useState(null);
 
   useEffect(() => {
     const fetchForensics = async () => {
@@ -70,9 +96,12 @@ const MetadataForensics = () => {
     'file_name',
   ];
 
-  const formatMetaValue = (value) => {
+  const formatMetaValue = (value, key = '') => {
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-    if (value === null || value === undefined || value === '') return '—';
+    if (value === null || value === undefined || value === '' || (['page_count', 'slide_count', 'word_count', 'total_editing_time_minutes'].includes(key) && Number(value) === 0)) {
+      return 'Not embedded in this file';
+    }
+    if (key === 'total_editing_time_minutes') return `${Number(value).toLocaleString()} minutes`;
     return value;
   };
 
@@ -198,19 +227,10 @@ const MetadataForensics = () => {
                       <tr key={clusterHeatmapLabels[rowIndex]} className="hover:bg-slate-50 transition">
                         <td className="whitespace-nowrap px-4 py-4 font-semibold text-slate-900 bg-slate-50">{clusterHeatmapLabels[rowIndex]}</td>
                         {row.map((score, colIndex) => {
-                          // Color gradient: white (low) to red (high)
-                          const hue = (1 - score) * 120; // 120 to 0 (green to red)
-                          const saturation = score * 100;
-                          const lightness = 100 - (score * 50);
+                          // Pale blue indicates low similarity; deep blue indicates high similarity.
                           return (
                             <td key={`${rowIndex}-${colIndex}`} className="px-4 py-4 text-center">
-                              <span 
-                                className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-bold text-white w-20"
-                                style={{
-                                  backgroundColor: score === 1 ? '#1e40af' : `hsl(${hue}, ${saturation}%, ${lightness}%)`,
-                                  color: score > 0.7 ? 'white' : (score < 0.3 ? 'rgb(51, 65, 85)' : 'white')
-                                }}
-                              >
+                              <span className="inline-flex w-20 items-center justify-center rounded-lg px-3 py-2 text-sm font-bold shadow-sm" style={{ backgroundColor: HEATMAP_COLOR(score), color: score >= 0.5 ? 'white' : 'rgb(30, 64, 175)' }}>
                                 {score.toFixed(3)}
                               </span>
                             </td>
@@ -227,20 +247,9 @@ const MetadataForensics = () => {
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-slate-500">Low</span>
                     <div className="flex h-6 w-40 overflow-hidden rounded-lg border border-slate-200">
-                      {[0, 0.2, 0.4, 0.6, 0.8, 1].map((val) => {
-                        const hue = (1 - val) * 120;
-                        const saturation = val * 100;
-                        const lightness = 100 - (val * 50);
-                        return (
-                          <div 
-                            key={val}
-                            style={{
-                              backgroundColor: val === 1 ? '#1e40af' : `hsl(${hue}, ${saturation}%, ${lightness}%)`,
-                              flex: 1
-                            }}
-                          />
-                        );
-                      })}
+                      {[0, 0.2, 0.4, 0.6, 0.8, 1].map((val) => (
+                        <div key={val} style={{ backgroundColor: HEATMAP_COLOR(val), flex: 1 }} />
+                      ))}
                     </div>
                     <span className="text-xs text-slate-500">High</span>
                   </div>
@@ -262,9 +271,10 @@ const MetadataForensics = () => {
               <p className="text-xs uppercase tracking-[0.18em] font-semibold text-red-600">Anomaly</p>
               <p className="mt-3 text-2xl font-bold text-red-600">{cluster?.weighted_anomaly_score?.toFixed(3) ?? '0.000'}</p>
             </div>
-            <div className="rounded-2xl bg-blue-50 border border-blue-200 p-5">
-              <p className="text-xs uppercase tracking-[0.18em] font-semibold text-blue-600">Originality</p>
+            <div className="relative cursor-pointer rounded-2xl border border-blue-200 bg-blue-50 p-5" tabIndex="0" onMouseEnter={() => setHoveredOriginality('cluster')} onMouseLeave={() => setHoveredOriginality(null)} onFocus={() => setHoveredOriginality('cluster')} onBlur={() => setHoveredOriginality(null)}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">Originality</p>
               <p className="mt-3 text-2xl font-bold text-blue-600">{cluster?.weighted_originality_score?.toFixed(3) ?? '0.000'}</p>
+              <div role="tooltip" className={`pointer-events-none absolute bottom-full right-0 z-50 mb-3 w-72 rounded-xl border border-slate-200 bg-slate-900 p-4 text-left text-white shadow-xl transition-all ${hoveredOriginality === 'cluster' ? 'visible opacity-100' : 'invisible opacity-0'}`}><p className="text-xs font-bold uppercase tracking-[0.16em] text-indigo-200">Cluster calculation</p><p className="mt-2 text-xs leading-5 text-slate-300">Average of the exact member originality scores in this cluster.</p><p className="mt-3 border-t border-slate-700 pt-3 text-sm font-bold">{clusterOriginalitySum.toFixed(3)} ÷ {clusterMemberCount || 1} = {cluster?.weighted_originality_score?.toFixed(3) ?? '0.000'}</p></div>
             </div>
           </div>
         </Card>
@@ -337,9 +347,10 @@ const MetadataForensics = () => {
                       <p className="text-xs uppercase tracking-[0.18em] font-semibold text-red-600">Anomaly</p>
                       <p className="mt-2 text-lg font-bold text-red-600">{member.metrics?.anomaly_score?.toFixed(3) ?? '0.000'}</p>
                     </div>
-                    <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-center">
-                      <p className="text-xs uppercase tracking-[0.18em] font-semibold text-blue-600">Originality</p>
+                    <div className="relative cursor-pointer rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-center" tabIndex="0" onMouseEnter={() => setHoveredOriginality(member.id)} onMouseLeave={() => setHoveredOriginality(null)} onFocus={() => setHoveredOriginality(member.id)} onBlur={() => setHoveredOriginality(null)}>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">Originality</p>
                       <p className="mt-2 text-lg font-bold text-blue-600">{member.metrics?.originality_score?.toFixed(3) ?? '0.000'}</p>
+                      <OriginalityScoreTooltip metrics={member.metrics} visible={hoveredOriginality === member.id} />
                     </div>
                     <Button
                       variant="primary"
@@ -355,17 +366,17 @@ const MetadataForensics = () => {
                     <div className="grid gap-3 sm:grid-cols-2">
                       {['author','original_author','application','app_version'].map((key) => (
                         <div key={key} className="rounded-lg bg-white p-3 border border-slate-200">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500 font-semibold">{key.replace(/_/g, ' ')}</p>
-                          <p className="mt-2 text-sm text-slate-800">{formatMetaValue(member.metadata?.[key] ?? member[key])}</p>
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500 font-semibold">{key === 'total_editing_time_minutes' ? 'Total edit time' : key === 'page_count' ? 'Pages' : key === 'slide_count' ? 'Slides' : key.replace(/_/g, ' ')}</p>
+                          <p className="mt-2 text-sm text-slate-800">{formatMetaValue(member.metadata?.[key] ?? member[key], key)}</p>
                         </div>
                       ))}
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      {['created','modified','page_count','total_saves'].map((key) => (
+                      {['created', 'total_editing_time_minutes', 'page_count', 'slide_count', 'word_count', 'total_saves'].filter((key) => key !== 'slide_count' || member.metadata?.slide_count !== undefined).map((key) => (
                         <div key={key} className="rounded-lg bg-white p-3 border border-slate-200">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500 font-semibold">{key.replace(/_/g, ' ')}</p>
-                          <p className="mt-2 text-sm text-slate-800">{formatMetaValue(member.metadata?.[key] ?? member[key])}</p>
-                        </div>
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500 font-semibold">{key === 'total_editing_time_minutes' ? 'Total edit time' : key === 'page_count' ? 'Pages' : key === 'slide_count' ? 'Slides' : key.replace(/_/g, ' ')}</p>
+                          <p className="mt-2 text-sm text-slate-800">{formatMetaValue(member.metadata?.[key] ?? member[key], key)}</p>
+                  </div>
                       ))}
                     </div>
                   </div>
