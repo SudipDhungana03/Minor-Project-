@@ -1,0 +1,4 @@
+frontend-react/node_modules/
+frontend-react/dist/
+backend-django/env/
+backend-django/media/
