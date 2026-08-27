@@ -347,23 +347,27 @@ def _tfidf_similarity(left_text, right_text):
 
 
 def _semantic_similarity(left_text, right_text):
+    """Return cosine similarity between token-frequency vectors.
+
+    This consistent formula guarantees S=1.0 for identical normalized text,
+    including chunks containing repeated words.
+    """
     left_tokens = Counter(_tokenize(left_text))
     right_tokens = Counter(_tokenize(right_text))
     if not left_tokens or not right_tokens:
         return 0.0
 
-    common_tokens = set(left_tokens.keys()) & set(right_tokens.keys())
+    common_tokens = set(left_tokens) & set(right_tokens)
     if not common_tokens:
         return 0.0
 
-    numerator = sum(min(left_tokens[token], right_tokens[token]) for token in common_tokens)
+    numerator = sum(left_tokens[token] * right_tokens[token] for token in common_tokens)
     left_norm = math.sqrt(sum(value * value for value in left_tokens.values()))
     right_norm = math.sqrt(sum(value * value for value in right_tokens.values()))
     denominator = left_norm * right_norm
     if denominator == 0:
         return 0.0
     return round(numerator / denominator, 3)
-
 
 def _comparison_verdict(score):
     if score >= 0.65:
@@ -407,9 +411,14 @@ def _compare_chunks(left_chunks, right_chunks):
         for right_idx, right_chunk in enumerate(right_chunks):
             right_compare = _chunk_compare(right_chunk)
             right_core = _chunk_core(right_chunk)
-            jaccard = _jaccard_similarity(left_compare, right_compare)
-            tfidf = _tfidf_similarity(left_compare, right_compare)
-            semantic = _semantic_similarity(left_compare, right_compare)
+            # Hidden overlap context is useful for partial matches, but it must
+            # not lower the score for two displayed chunks that are identical.
+            if _normalize_text(left_core) and _normalize_text(left_core) == _normalize_text(right_core):
+                jaccard = tfidf = semantic = 1.0
+            else:
+                jaccard = _jaccard_similarity(left_compare, right_compare)
+                tfidf = _tfidf_similarity(left_compare, right_compare)
+                semantic = _semantic_similarity(left_compare, right_compare)
             is_match = jaccard >= 0.15 or tfidf >= 0.15 or semantic >= 0.12
             if not is_match:
                 continue
@@ -700,19 +709,12 @@ def build_similarity_report(submissions):
             doc_tfidf = _tfidf_similarity(left_text, right_text)
             doc_semantic = _semantic_similarity(left_text, right_text)
 
-            # If chunk matches exist, take the max of doc-level and best-chunk scores
-            if chunk_matches:
-                best_jaccard = max(m['scores']['jaccard'] for m in chunk_matches)
-                best_tfidf = max(m['scores']['tfidf'] for m in chunk_matches)
-                best_semantic = max(m['scores']['semantic'] for m in chunk_matches)
-                jaccard = round(max(doc_jaccard, best_jaccard), 3)
-                tfidf = round(max(doc_tfidf, best_tfidf), 3)
-                semantic = round(max(doc_semantic, best_semantic), 3)
-            else:
-                jaccard = round(doc_jaccard, 3)
-                tfidf = round(doc_tfidf, 3)
-                semantic = round(doc_semantic, 3)
-            
+            # Overall similarity must evaluate every token in both submissions.
+            # Chunk matches are evidence/highlights only. A copied paragraph
+            # must not inflate the percentage for otherwise different files.
+            jaccard = round(doc_jaccard, 3)
+            tfidf = round(doc_tfidf, 3)
+            semantic = round(doc_semantic, 3)
             overall_score = round((jaccard + tfidf + semantic) / 3, 3)
             verdict = _comparison_verdict(overall_score)
             flagged = any([

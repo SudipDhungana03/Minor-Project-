@@ -5,6 +5,7 @@ from .views import (
     SendVerificationView, 
     VerifyCodeView, 
     UpdateProfileView,  # Import the new profile view
+    organization_list_view,
     dashboard_view
 )
 from . import views
@@ -17,6 +18,7 @@ urlpatterns = [
     
     # Profile Completion
     path('user/profile/', UpdateProfileView.as_view(), name='update-profile'),
+    path('organizations/', organization_list_view, name='organization-list'),
 
     # Auth & Tokens
     path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

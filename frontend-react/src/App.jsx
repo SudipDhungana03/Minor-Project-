@@ -23,6 +23,20 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
   const [role, setRole] = useState(localStorage.getItem('role'));
   const [user, setUser] = useState(null);
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'system');
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme = () => {
+      const isDark = theme === 'dark' || (theme === 'system' && mediaQuery.matches);
+      document.documentElement.classList.toggle('dark', isDark);
+      document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+    };
+    applyTheme();
+    mediaQuery.addEventListener('change', applyTheme);
+    localStorage.setItem('theme', theme);
+    return () => mediaQuery.removeEventListener('change', applyTheme);
+  }, [theme]);
 
   // Listen for auth changes so the UI updates without a full page refresh
   useEffect(() => {
@@ -148,7 +162,7 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/complete-profile" element={<CompleteProfile />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route path="/settings" element={<Settings theme={theme} onThemeChange={setTheme} />} />
               
               {/* Dashboard Routes */}
               <Route path="/student-dashboard" element={<StudentDashboard />} />

@@ -23,3 +23,5 @@ opencv-python-headless
 matplotlib
 seaborn
 pandas
+
+sentence-transformers

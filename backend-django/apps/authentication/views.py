@@ -1,4 +1,8 @@
+import json
 import random
+import re
+from pathlib import Path
+import requests
 from django.core.mail import send_mail
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -11,6 +15,53 @@ from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
+UNIVERSITY_DATA_URL = 'https://raw.githubusercontent.com/Hipo/university-domains-list/master/world_universities_and_domains.json'
+UNIVERSITY_DATA_FILE = Path(__file__).resolve().parent / 'data' / 'world_universities_and_domains.json'
+_university_directory = None
+
+
+def _load_university_directory():
+    """Load the bundled worldwide directory, refreshing only if it is absent."""
+    global _university_directory
+    if _university_directory is not None:
+        return _university_directory
+
+    try:
+        records = json.loads(UNIVERSITY_DATA_FILE.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        try:
+            response = requests.get(UNIVERSITY_DATA_URL, timeout=20)
+            response.raise_for_status()
+            records = response.json()
+            UNIVERSITY_DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+            UNIVERSITY_DATA_FILE.write_text(json.dumps(records), encoding='utf-8')
+        except (requests.RequestException, ValueError, OSError):
+            records = []
+
+    _university_directory = tuple(
+        record.get('name', '').strip() for record in records if record.get('name', '').strip()
+    )
+    return _university_directory
+
+
+def _university_initials(name):
+    ignored_words = {'and', 'at', 'by', 'for', 'in', 'of', 'the', 'to'}
+    words = re.findall(r'[a-z0-9]+', name.casefold())
+    return ''.join(word[0] for word in words if word not in ignored_words)
+
+
+def _university_match_rank(name, search):
+    normalized_name = name.casefold()
+    initials = _university_initials(name)
+    if normalized_name == search:
+        return 0
+    if normalized_name.startswith(search):
+        return 1
+    if initials.startswith(search):
+        return 2
+    if search in normalized_name:
+        return 3
+    return 4
 
 # --- Registration View ---
 class RegisterView(generics.CreateAPIView):
@@ -85,6 +136,48 @@ def dashboard_view(request):
         "username": request.user.username,
         "role": request.user.role
     }, status=status.HTTP_200_OK)
+
+# --- Organization directory ---
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def organization_list_view(request):
+    """Search locally saved names and the cached worldwide university list."""
+    search = request.query_params.get('search', '').strip()[:120]
+    local_organizations = User.objects.exclude(organization__isnull=True).exclude(organization__exact='')
+    if search:
+        local_organizations = local_organizations.filter(organization__icontains=search)
+
+    names = {name.strip() for name in local_organizations.values_list('organization', flat=True) if name.strip()}
+    normalized_search = search.casefold()
+    if len(normalized_search) >= 2:
+        for university in _load_university_directory():
+            if _university_match_rank(university, normalized_search) < 4:
+                names.add(university)
+
+        # OpenAlex fills gaps in the open university-domain list, including
+        # institutions commonly searched by their acronyms (such as IIT).
+        try:
+            response = requests.get(
+                'https://api.openalex.org/institutions',
+                params={'search': search, 'per-page': 25},
+                timeout=5,
+            )
+            response.raise_for_status()
+            for institution in response.json().get('results', []):
+                if institution.get('type') != 'education':
+                    continue
+                name = (institution.get('display_name') or '').strip()
+                if name:
+                    names.add(name)
+        except (requests.RequestException, ValueError):
+            pass
+
+    ranked_names = sorted(
+        names,
+        key=lambda name: (_university_match_rank(name, normalized_search), name.casefold()),
+    ) if normalized_search else sorted(names, key=str.casefold)
+    return Response({'organizations': ranked_names[:50]})
+
 
 # --- NEW: Update Profile View ---
 class UpdateProfileView(RetrieveUpdateAPIView):

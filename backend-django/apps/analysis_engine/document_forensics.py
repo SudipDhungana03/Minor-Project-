@@ -13,6 +13,10 @@ try:
     import docx
 except Exception:  # pragma: no cover - optional dependency for tests
     docx = None
+try:
+    from pptx import Presentation
+except Exception:  # pragma: no cover - optional dependency for tests
+    Presentation = None
 
 try:
     import matplotlib
@@ -128,6 +132,31 @@ def _normalize_author_match(author: str, student_name: str) -> float:
     return 0.0
 
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(float(value or default))
+    except (TypeError, ValueError):
+        return default
+
+
+def _read_ooxml_extended_properties(zf: zipfile.ZipFile, metadata: Dict[str, Any]) -> None:
+    """Read embedded Office statistics such as TotalTime, Pages, and Words."""
+    if 'docProps/app.xml' not in zf.namelist():
+        return
+    root = ET.fromstring(zf.read('docProps/app.xml'))
+    namespace = 'http://schemas.openxmlformats.org/officeDocument/2006/extended-properties'
+
+    def value(tag: str) -> str:
+        element = root.find(f'{{{namespace}}}{tag}')
+        return (element.text or '').strip() if element is not None else ''
+
+    for source, target in {'Application': 'application', 'AppVersion': 'app_version', 'Company': 'company', 'Manager': 'manager', 'Template': 'template'}.items():
+        if value(source):
+            metadata[target] = value(source)
+    for source, target in {'TotalTime': 'total_editing_time_minutes', 'Revision': 'total_saves', 'Pages': 'page_count', 'Words': 'word_count', 'Characters': 'character_count', 'CharactersWithSpaces': 'characters_with_spaces', 'Paragraphs': 'paragraph_count', 'Lines': 'line_count', 'Slides': 'slide_count', 'Notes': 'notes_count'}.items():
+        if value(source):
+            metadata[target] = _safe_int(value(source))
+
 def _extract_docx_metadata(path: str) -> Dict[str, Any]:
     metadata: Dict[str, Any] = {}
     if not os.path.exists(path):
@@ -149,20 +178,12 @@ def _extract_docx_metadata(path: str) -> Dict[str, Any]:
                 'app_version': '',
                 'total_editing_time_minutes': 0,
                 'total_saves': int(getattr(core_props, 'revision', 0) or 0),
+                'paragraph_count': len([paragraph for paragraph in document.paragraphs if paragraph.text.strip()]),
+                'word_count': len(re.findall(r"[A-Za-z0-9']+", '\n'.join(paragraph.text for paragraph in document.paragraphs))),
             })
 
         with zipfile.ZipFile(path, 'r') as zf:
-            if 'docProps/app.xml' in zf.namelist():
-                raw = zf.read('docProps/app.xml')
-                root = ET.fromstring(raw)
-                ns = {'ep': 'http://schemas.openxmlformats.org/officeDocument/2006/extended-properties'}
-                def find_ep(tag):
-                    return root.find(f'{{{ns["ep"]}}}{tag}')
-
-                metadata['application'] = (find_ep('Application').text or '') if find_ep('Application') is not None else metadata.get('application', '')
-                metadata['app_version'] = (find_ep('AppVersion').text or '') if find_ep('AppVersion') is not None else metadata.get('app_version', '')
-                metadata['total_editing_time_minutes'] = int((find_ep('TotalTime').text or '0') if find_ep('TotalTime') is not None else metadata.get('total_editing_time_minutes', 0))
-                metadata['total_saves'] = int((find_ep('Revision').text or '0') if find_ep('Revision') is not None else metadata.get('total_saves', 0))
+            _read_ooxml_extended_properties(zf, metadata)
             if 'docProps/core.xml' in zf.namelist():
                 raw = zf.read('docProps/core.xml')
                 root = ET.fromstring(raw)
@@ -186,6 +207,34 @@ def _extract_docx_metadata(path: str) -> Dict[str, Any]:
 
     return metadata
 
+
+def _extract_pptx_metadata(path: str) -> Dict[str, Any]:
+    """Extract core and extended metadata from a PowerPoint OOXML package."""
+    metadata: Dict[str, Any] = {}
+    if not os.path.exists(path):
+        return metadata
+    try:
+        if Presentation is not None:
+            presentation = Presentation(path)
+            core_props = presentation.core_properties
+            slide_text = [shape.text for slide in presentation.slides for shape in slide.shapes if hasattr(shape, 'text') and shape.text]
+            metadata.update({
+                'author': core_props.author or '',
+                'original_author': core_props.author or '',
+                'last_modified_by': core_props.last_modified_by or '',
+                'created': _parse_ooxml_datetime(getattr(core_props, 'created', None)),
+                'revision': _safe_int(getattr(core_props, 'revision', 0)),
+                'title': core_props.title or '',
+                'slide_count': len(presentation.slides),
+                'word_count': len(re.findall(r"[A-Za-z0-9']+", ' '.join(slide_text))),
+                'total_editing_time_minutes': 0,
+                'total_saves': _safe_int(getattr(core_props, 'revision', 0)),
+            })
+        with zipfile.ZipFile(path, 'r') as zf:
+            _read_ooxml_extended_properties(zf, metadata)
+    except Exception:
+        pass
+    return metadata
 
 def _extract_pdf_metadata(path: str) -> Dict[str, Any]:
     metadata: Dict[str, Any] = {}
@@ -242,6 +291,9 @@ def _extract_text_from_path(path: Optional[str]) -> str:
             if ext == '.docx' and docx is not None:
                 document = docx.Document(path)
                 return '\n'.join(paragraph.text for paragraph in document.paragraphs if paragraph.text.strip())
+            if ext == '.pptx' and Presentation is not None:
+                presentation = Presentation(path)
+                return '\n'.join(shape.text for slide in presentation.slides for shape in slide.shapes if hasattr(shape, 'text') and shape.text)
             if ext == '.pdf' and PdfReader is not None:
                 reader = PdfReader(path)
                 pages = [page.extract_text() or '' for page in reader.pages]
@@ -264,6 +316,10 @@ def _extract_metadata_from_path(path: Optional[str]) -> Dict[str, Any]:
             file_metadata = _extract_docx_metadata(path)
             metadata.update(file_metadata)
             metadata['paragraph_count'] = metadata.get('paragraph_count', 0)
+            return metadata
+
+        if ext == '.pptx':
+            metadata.update(_extract_pptx_metadata(path))
             return metadata
 
         if ext == '.pdf':
@@ -393,7 +449,7 @@ def _build_similarity_heatmap_image(matrix: List[List[Dict[str, Any]]], labels: 
     values = [[float(cell.get('overall_score', 0.0)) for cell in row] for row in matrix]
     df = pd.DataFrame(values, index=labels, columns=labels)
     fig, ax = plt.subplots(figsize=(max(4, len(labels) * 0.6), max(4, len(labels) * 0.6)))
-    sns.heatmap(df, annot=True, fmt='.3f', cmap='vlag', cbar=True, linewidths=0.5, ax=ax)
+    sns.heatmap(df, annot=True, fmt='.3f', cmap='Blues', vmin=0, vmax=1, cbar=True, linewidths=0.5, ax=ax)
     ax.set_title('Submission Similarity Heatmap')
     ax.set_xlabel('Submission')
     ax.set_ylabel('Submission')
@@ -503,7 +559,13 @@ def _build_submission_metrics(submissions: List[Dict[str, Any]], similarity_repo
         similarity_factor = 1.0 - max_similarity
         combined_similarity = (0.5 * similarity_factor) + (0.5 * chronology_score)
 
-        originality_score = round(min(1.0, (0.35 * editing_score) + (0.25 * save_revision_score) + (0.25 * author_match) + (0.15 * combined_similarity)), 3)
+        originality_components = {
+            'editing_history': {'weight': 0.35, 'value': round(editing_score, 3), 'contribution': round(0.35 * editing_score, 3)},
+            'saves_and_revisions': {'weight': 0.25, 'value': round(save_revision_score, 3), 'contribution': round(0.25 * save_revision_score, 3)},
+            'author_match': {'weight': 0.25, 'value': round(author_match, 3), 'contribution': round(0.25 * author_match, 3)},
+            'similarity_and_chronology': {'weight': 0.15, 'value': round(combined_similarity, 3), 'contribution': round(0.15 * combined_similarity, 3)},
+        }
+        originality_score = round(min(1.0, sum(component['contribution'] for component in originality_components.values())), 3)
         anomaly_score = round(max(0.0, 1.0 - originality_score), 3)
         risk_level = 'high' if anomaly_score >= 0.6 else 'medium' if anomaly_score >= 0.3 else 'low'
 
@@ -522,6 +584,14 @@ def _build_submission_metrics(submissions: List[Dict[str, Any]], similarity_repo
             'author_match_score': round(author_match, 3),
             'chronology_score': round(chronology_score, 3),
             'combined_similarity_score': round(combined_similarity, 3),
+            'similarity_factor': round(similarity_factor, 3),
+            'editing_score': round(editing_score, 3),
+            'save_revision_score': round(save_revision_score, 3),
+            'originality_components': originality_components,
+            'scoring_policy': {
+                'included_evidence': ['total_editing_time_minutes', 'revision', 'total_saves', 'author', 'text_similarity', 'creation_chronology'],
+                'display_only_metadata': ['page_count', 'word_count', 'paragraph_count', 'character_count', 'line_count', 'slide_count', 'notes_count'],
+            },
             'metadata': metadata,
         })
 

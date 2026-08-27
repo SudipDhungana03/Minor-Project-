@@ -250,22 +250,31 @@ const SubmissionList = ({ assignmentId }) => {
             {showBatchModal && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
                     <div style={{ background: '#fff', borderRadius: '18px', width: '100%', maxWidth: '1100px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', boxShadow: '0 20px 60px rgba(15, 23, 42, 0.3)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                            <div>
-                                <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Batch plagiarism review</h3>
-                                <p style={{ margin: '4px 0 0', color: '#64748b' }}>Run plagiarism comparisons first, then inspect metadata forensics for the selected submissions.</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', gap: '24px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                <span aria-hidden="true" style={{ display: 'inline-flex', width: '64px', height: '64px', flexShrink: 0, alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)', color: '#4338ca', boxShadow: 'inset 0 0 0 1px #dbeafe' }}>
+                                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="M9 12l2 2 4-4" /></svg>
+                                </span>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.75rem', lineHeight: 1.15, fontWeight: 800, color: '#0f172a' }}>Batch plagiarism review</h3>
+                                    <p style={{ margin: '7px 0 0', color: '#64748b', fontSize: '0.98rem' }}>Run plagiarism comparisons first, then inspect metadata forensics for the selected submissions.</p>
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                <button onClick={toggleSelectAll} style={{ padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', border: '1px solid #cbd5e1', background: '#f8fafc' }}>
-                                    {selectedIds.length === submissions.length ? 'Clear All' : 'Select All'}
-                                </button>
-                                <button onClick={handleBatchAnalysis} disabled={batchLoading} style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '10px', padding: '8px 12px', cursor: batchLoading ? 'wait' : 'pointer', fontWeight: 700 }}>
-                                    {batchLoading ? 'Comparing...' : 'Run plagiarism'}
-                                </button>
-                                <button onClick={() => { setShowBatchModal(false); setBatchReport(null); setBatchError(''); setComparisonPair(null); }} style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: '10px', padding: '8px 12px', cursor: 'pointer' }}>
-                                    Close
-                                </button>
-                            </div>
+                            <button onClick={() => navigate(`/assignment/${assignmentId}/metadata-forensics?submission_ids=${selectedIds.join(',')}`)} disabled={selectedIds.length === 0} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px', width: '300px', height: '52px', padding: '0 16px', borderRadius: '10px', whiteSpace: 'nowrap', border: 'none', background: selectedIds.length === 0 ? '#94a3b8' : 'linear-gradient(135deg, #1554e8, #1644bd)', color: '#fff', cursor: selectedIds.length === 0 ? 'not-allowed' : 'pointer', fontWeight: 800, fontSize: '0.96rem', boxShadow: selectedIds.length === 0 ? 'none' : '0 8px 18px rgba(21, 84, 232, 0.24)' }}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="M9 12l2 2 4-4" /></svg>
+                                Run metadata forensics <span aria-hidden="true" style={{ fontSize: '1.35rem', lineHeight: 0 }}>→</span>
+                            </button>
+                        </div>
+                        <div style={{ marginTop: '24px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <button onClick={toggleSelectAll} style={{ padding: '12px 18px', borderRadius: '10px', cursor: 'pointer', border: '1px solid #cbd5e1', background: '#fff', color: '#0f172a', fontWeight: 700 }}>
+                                {selectedIds.length === submissions.length ? 'Clear All' : 'Select All'}
+                            </button>
+                            <button onClick={handleBatchAnalysis} disabled={batchLoading} style={{ display: 'inline-flex', alignItems: 'center', gap: '9px', background: '#1554e8', color: '#fff', border: 'none', borderRadius: '10px', padding: '12px 18px', cursor: batchLoading ? 'wait' : 'pointer', fontWeight: 800, boxShadow: '0 8px 18px rgba(21, 84, 232, 0.2)' }}>
+                                <span aria-hidden="true" style={{ fontSize: '1.1rem' }}>▷</span>{batchLoading ? 'Comparing...' : 'Run plagiarism'}
+                            </button>
+                            <button onClick={() => { setShowBatchModal(false); setBatchReport(null); setBatchError(''); setComparisonPair(null); }} style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: '10px', padding: '12px 18px', cursor: 'pointer', color: '#0f172a', fontWeight: 700 }}>
+                                Close
+                            </button>
                         </div>
                         <div style={{ marginTop: '16px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                             <button onClick={() => setActiveBatchTab('plagiarism')} style={{ padding: '8px 12px', borderRadius: '10px', border: activeBatchTab === 'plagiarism' ? '1px solid #4f46e5' : '1px solid #cbd5e1', background: activeBatchTab === 'plagiarism' ? '#eef2ff' : '#f8fafc', color: activeBatchTab === 'plagiarism' ? '#1d4ed8' : '#334155', cursor: 'pointer' }}>
@@ -299,55 +308,55 @@ const SubmissionList = ({ assignmentId }) => {
                                 </div>
 
                                 {activeBatchTab === 'plagiarism' && (
-                                    <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '18px' }}>
-                                            <div>
-                                                <h4 style={{ margin: 0, fontSize: '1rem' }}>Plagiarism overlap matrix</h4>
-                                                <p style={{ margin: '6px 0 0', color: '#475569', fontSize: '0.92rem' }}>Review pairwise similarity and continue to metadata forensics when ready.</p>
-                                            </div>
-                                            <button onClick={() => navigate(`/assignment/${assignmentId}/metadata-forensics?submission_ids=${selectedIds.join(',')}`)} style={{ padding: '10px 14px', borderRadius: '999px', border: '1px solid #16a34a', background: '#dcfce7', color: '#166534', cursor: 'pointer', fontWeight: 700 }}>
-                                                Run metadata forensics
-                                            </button>
+                                    <section style={{ border: '1px solid #dbe3f0', borderRadius: '18px', background: '#ffffff', padding: '22px', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.04)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                                            <span aria-hidden="true" style={{ display: 'inline-flex', height: '30px', width: '30px', alignItems: 'center', justifyContent: 'center', borderRadius: '9px', background: '#eef2ff', color: '#1554e8', fontSize: '18px', fontWeight: 700 }}>▦</span>
+                                            <h4 style={{ margin: 0, fontSize: '1.08rem', fontWeight: 800, color: '#0f172a' }}>Plagiarism overlap matrix</h4>
                                         </div>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden' }}>
-                                            <thead>
-                                                <tr style={{ background: '#f8fafc' }}>
-                                                    <th style={{ padding: '12px 14px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Submission</th>
-                                                    {plagiarismReport?.submitted_files?.map((file) => (
-                                                        <th key={file.id} style={{ padding: '12px 14px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>{file.student_name || file.title}</th>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {plagiarismReport?.matrix?.map((row, index) => {
-                                                    const leftFile = plagiarismReport.submitted_files[index];
-                                                    return (
-                                                        <tr key={leftFile?.id || index}>
-                                                            <td style={{ padding: '12px 14px', fontWeight: 700, borderBottom: '1px solid #e2e8f0', background: '#fff' }}>{leftFile?.student_name || leftFile?.title}</td>
-                                                            {row.map((cell) => {
-                                                                const rightFile = plagiarismReport.submitted_files.find((item) => item.id === cell.submission_id);
-                                                                const cellBackground = cell.is_diagonal ? '#f8fafc' : cell.verdict === 'High similarity' ? '#fee2e2' : cell.verdict === 'Moderate similarity' ? '#fef3c7' : cell.verdict === 'Low similarity' ? '#e0f2fe' : '#ecfdf5';
-                                                                return (
-                                                                    <td key={`${leftFile?.id}-${cell.submission_id}`} style={{ padding: '12px 14px', borderBottom: '1px solid #e2e8f0', background: cellBackground }}>
-                                                                        {cell.is_diagonal ? (
-                                                                            <span style={{ color: '#64748b', fontWeight: 600 }}>Self</span>
-                                                                        ) : (
-                                                                            <button onClick={() => openPairComparison(leftFile, rightFile, cell)} style={{ color: '#fff', background: cell.verdict === 'High similarity' ? '#c2410c' : cell.verdict === 'Moderate similarity' ? '#ca8a04' : cell.verdict === 'Low similarity' ? '#2563eb' : '#10b981', border: 'none', borderRadius: '999px', padding: '6px 12px', cursor: 'pointer', fontWeight: 700 }}>
-                                                                                {cell.verdict}
-                                                                            </button>
-                                                                        )}
-                                                                        <div style={{ marginTop: '8px', fontSize: '0.85rem', color: '#475569' }} title='J=Jaccard (token overlap) · T=TF-IDF (term frequency) · S=Semantic (weighted overlap)'>
-                                                                            Score: {cell.overall_score ?? 0} · J: {cell.scores?.jaccard ?? 0} · T: {cell.scores?.tfidf ?? 0} · S: {cell.scores?.semantic ?? 0}
-                                                                        </div>
-                                                                    </td>
-                                                                );
-                                                            })}
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                        <p style={{ margin: '0 0 20px', color: '#475569', fontSize: '0.94rem', lineHeight: 1.5 }}>Review pairwise similarity and continue to metadata forensics when ready.</p>
+
+                                        <div style={{ overflowX: 'auto', border: '1px solid #dbe3f0', borderRadius: '14px' }}>
+                                            <table style={{ width: '100%', minWidth: '720px', borderCollapse: 'separate', borderSpacing: 0 }}>
+                                                <thead>
+                                                    <tr style={{ background: '#ffffff' }}>
+                                                        <th style={{ padding: '16px 22px', textAlign: 'left', color: '#0f172a', fontWeight: 800, borderBottom: '1px solid #dbe3f0' }}>Submission</th>
+                                                        {plagiarismReport?.submitted_files?.map((file) => (
+                                                            <th key={file.id} style={{ padding: '16px 22px', textAlign: 'left', color: '#0f172a', fontWeight: 800, borderBottom: '1px solid #dbe3f0', whiteSpace: 'nowrap' }}>{file.student_name || file.title}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {plagiarismReport?.matrix?.map((row, index) => {
+                                                        const leftFile = plagiarismReport.submitted_files[index];
+                                                        return (
+                                                            <tr key={leftFile?.id || index}>
+                                                                <td style={{ padding: '22px', fontWeight: 800, color: '#0f172a', borderBottom: index === plagiarismReport.matrix.length - 1 ? 'none' : '1px solid #dbe3f0', background: '#ffffff', whiteSpace: 'nowrap' }}>{leftFile?.student_name || leftFile?.title}</td>
+                                                                {row.map((cell) => {
+                                                                    const rightFile = plagiarismReport.submitted_files.find((item) => item.id === cell.submission_id);
+                                                                    const cellBackground = cell.is_diagonal ? '#f4f7ff' : cell.verdict === 'High similarity' ? '#fff1f2' : cell.verdict === 'Moderate similarity' ? '#fffbeb' : cell.verdict === 'Low similarity' ? '#eff6ff' : '#f0fdf4';
+                                                                    const badgeColors = cell.verdict === 'High similarity' ? { background: '#fee2e2', color: '#b91c1c', border: '#fecaca' } : cell.verdict === 'Moderate similarity' ? { background: '#fef3c7', color: '#a16207', border: '#fde68a' } : cell.verdict === 'Low similarity' ? { background: '#dbeafe', color: '#1d4ed8', border: '#bfdbfe' } : { background: '#dcfce7', color: '#15803d', border: '#bbf7d0' };
+                                                                    return (
+                                                                        <td key={`${leftFile?.id}-${cell.submission_id}`} style={{ minWidth: '220px', padding: '16px 22px', borderLeft: '1px solid #dbe3f0', borderBottom: index === plagiarismReport.matrix.length - 1 ? 'none' : '1px solid #dbe3f0', background: cellBackground, verticalAlign: 'top' }}>
+                                                                            {cell.is_diagonal ? (
+                                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '9px', color: '#1554e8', fontWeight: 800 }}><span aria-hidden="true">♢</span> Self</div>
+                                                                            ) : (
+                                                                                <button onClick={() => openPairComparison(leftFile, rightFile, cell)} style={{ color: badgeColors.color, background: badgeColors.background, border: `1px solid ${badgeColors.border}`, borderRadius: '8px', padding: '5px 9px', cursor: 'pointer', fontWeight: 800, fontSize: '0.84rem' }}>
+                                                                                    {cell.verdict}
+                                                                                </button>
+                                                                            )}
+                                                                            <div style={{ marginTop: '9px', fontSize: '0.86rem', color: '#475569', lineHeight: 1.45 }} title="J=Jaccard (token overlap) · T=TF-IDF (term frequency) · S=Semantic (weighted overlap)">
+                                                                                Score: {cell.overall_score ?? 0} · J: {cell.scores?.jaccard ?? 0} · T: {cell.scores?.tfidf ?? 0} · S: {cell.scores?.semantic ?? 0}
+                                                                            </div>
+                                                                        </td>
+                                                                    );
+                                                                })}
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </section>
                                 )}
 
                                 {activeBatchTab === 'forensics' && forensicsReport && (
